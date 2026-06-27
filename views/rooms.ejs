@@ -1,0 +1,63 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Room Management</h1>
+  <span class="badge">Max 5 tenants per room</span>
+</div>
+
+<div class="rooms-grid">
+  <% rooms.forEach(room => { %>
+  <div class="room-card room-<%= room.status %>">
+    <div class="room-header">
+      <h3>Room <%= room.room_number %></h3>
+      <span class="status-badge status-<%= room.status %>"><%= room.status %></span>
+    </div>
+
+    <!-- Tenant List -->
+    <div class="tenant-list">
+      <label class="form-label">Tenants (<%= room.tenants.length %>/5)</label>
+      <% if (room.tenants.length === 0) { %>
+        <p class="text-muted text-small">No tenants</p>
+      <% } %>
+      <% room.tenants.forEach(tenant => { %>
+        <div class="tenant-item">
+          <span class="tenant-name"><%= tenant.name %></span>
+          <div class="tenant-actions">
+            <form method="POST" action="/rooms/<%= room.id %>/tenants/<%= tenant.id %>/wifi" style="display:inline">
+              <button type="submit" class="btn-wifi <%= tenant.has_wifi ? 'wifi-on' : 'wifi-off' %>" title="<%= tenant.has_wifi ? 'WiFi ON - click to turn off' : 'WiFi OFF - click to turn on' %>">
+                WiFi <%= tenant.has_wifi ? 'ON' : 'OFF' %>
+              </button>
+            </form>
+            <form method="POST" action="/rooms/<%= room.id %>/tenants/remove/<%= tenant.id %>" style="display:inline">
+              <button type="submit" class="btn-remove" title="Remove tenant">✕</button>
+            </form>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- Add Tenant Form -->
+    <% if (room.tenants.length < 5) { %>
+    <form method="POST" action="/rooms/<%= room.id %>/tenants/add" class="add-tenant-form">
+      <input type="text" name="name" placeholder="New tenant name" required>
+      <button type="submit" class="btn btn-primary btn-sm">Add</button>
+    </form>
+    <% } %>
+
+    <!-- Room Status -->
+    <form method="POST" action="/rooms/update/<%= room.id %>" class="room-status-form">
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="occupied" <%= room.status === 'occupied' ? 'selected' : '' %>>Occupied</option>
+          <option value="vacant" <%= room.status === 'vacant' ? 'selected' : '' %>>Vacant</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-secondary btn-sm">Update Status</button>
+    </form>
+  </div>
+  <% }) %>
+</div>
+
+<%- include('partials/footer') %>
+

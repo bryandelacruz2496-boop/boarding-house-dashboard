@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boarding House Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <% if (user) { %>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-profile">
+        <div class="profile-avatar">
+          <span>&#127936;</span>
+        </div>
+        <div class="profile-name"><%= user.username.toUpperCase() %></div>
+        <div class="profile-role">Property Manager</div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-link"><span class="link-icon">&#9632;</span> Dashboard</a>
+        <a href="/billing" class="sidebar-link"><span class="link-icon">&#9632;</span> Billing</a>
+        <a href="/computation" class="sidebar-link"><span class="link-icon">&#9632;</span> Computation</a>
+        <a href="/expenses" class="sidebar-link"><span class="link-icon">&#9632;</span> Expenses</a>
+        <a href="/rooms" class="sidebar-link"><span class="link-icon">&#9632;</span> Rooms</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout" class="sidebar-link sidebar-logout"><span class="link-icon">&#9632;</span> Logout</a>
+      </div>
+    </aside>
+    <div class="main-content">
+  <% } %>
+  <main class="container">

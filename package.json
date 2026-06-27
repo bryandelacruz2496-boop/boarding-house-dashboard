@@ -1,0 +1,31 @@
+{
+  "name": "boarding-house-dashboard",
+  "version": "1.0.0",
+  "description": "boarding-house-dashboard",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bryandelacruz2496-boop/boarding-house-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/bryandelacruz2496-boop/boarding-house-dashboard/issues"
+  },
+  "homepage": "https://github.com/bryandelacruz2496-boop/boarding-house-dashboard#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-session-knex": "^5.0.0",
+    "dotenv": "^17.4.2",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "mongodb": "^7.4.0"
+  }
+}

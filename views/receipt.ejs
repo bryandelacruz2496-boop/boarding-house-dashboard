@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receipt - <%= tenant.name %> - <%= month %> <%= year %></title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+    .receipt {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .receipt-header {
+      text-align: center;
+      border-bottom: 2px solid #000035;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .receipt-header h1 {
+      color: #000035;
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+    .receipt-header p {
+      color: #666;
+      font-size: 12px;
+    }
+    .receipt-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #555;
+    }
+    .receipt-meta strong { color: #000035; }
+    .receipt-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+    }
+    .receipt-table th,
+    .receipt-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 13px;
+    }
+    .receipt-table th {
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #444;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .receipt-table .total-row td {
+      background: #000035;
+      color: white;
+      font-weight: 700;
+      font-size: 15px;
+      border: none;
+    }
+    .receipt-note {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px dashed #ddd;
+    }
+    .electric-detail {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: #555;
+    }
+    .electric-detail strong { color: #000035; }
+    .actions {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      background: #000035;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      margin: 0 4px;
+    }
+    .btn:hover { background: #000050; }
+    .btn-secondary { background: #666; }
+    .btn-secondary:hover { background: #444; }
+    @media print {
+      body { background: white; padding: 0; }
+      .receipt { box-shadow: none; max-width: 100%; }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="receipt-header">
+      <h1>Boarding House</h1>
+      <p>Monthly Billing Statement</p>
+    </div>
+
+    <div class="receipt-meta">
+      <div>
+        <strong>Tenant:</strong> <%= tenant.name %><br>
+        <strong>Room:</strong> <%= room.room_number %>
+      </div>
+      <div style="text-align: right;">
+        <strong>Period:</strong> <%= month %> <%= year %><br>
+        <strong>Tenants in Room:</strong> <%= tenantCount %>
+      </div>
+    </div>
+
+    <div class="electric-detail">
+      Electric: Previous <strong><%= billing.previous_reading %></strong> → Current <strong><%= billing.current_reading %></strong> | 
+      Consumption: <strong><%= consumption %> kWh</strong> x P<%= billing.rate_per_kwh %>/kWh
+    </div>
+
+    <table class="receipt-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th style="text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Rent (P<%= billing.rent.toLocaleString('en-PH') %> / <%= tenantCount %> tenants)</td>
+          <td style="text-align:right">P<%= rentShare.toFixed(2) %></td>
+        </tr>
+        <tr>
+          <td>WiFi<%= wifiCost > 0 ? '' : ' (not subscribed)' %></td>
+          <td style="text-align:right"><%= wifiCost > 0 ? 'P' + wifiCost.toFixed(2) : '—' %></td>
+        </tr>
+        <tr>
+          <td>Electricity (<%= consumption %> kWh / <%= tenantCount %> tenants)</td>
+          <td style="text-align:right">P<%= electricShare.toFixed(2) %></td>
+        </tr>
+        <tr>
+          <td>Water</td>
+          <td style="text-align:right">P<%= waterShare.toFixed(2) %></td>
+        </tr>
+        <tr>
+          <td>Garbage Fee</td>
+          <td style="text-align:right">P<%= garbageShare.toFixed(2) %></td>
+        </tr>
+        <% if (penaltyShare > 0) { %>
+        <tr>
+          <td>Penalty</td>
+          <td style="text-align:right">P<%= penaltyShare.toFixed(2) %></td>
+        </tr>
+        <% } %>
+        <tr class="total-row">
+          <td>TOTAL DUE</td>
+          <td style="text-align:right">P<%= total.toFixed(2) %></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="receipt-note">
+      Please settle your payment on or before the 10th of the month.<br>
+      Thank you!
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn" onclick="window.print()">Print / Save as PDF</button>
+    <a href="/computation?month=<%= month %>&year=<%= year %>" class="btn btn-secondary">Back</a>
+  </div>
+</body>
+</html>

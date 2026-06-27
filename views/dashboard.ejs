@@ -1,0 +1,308 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <span class="badge"><%= currentMonth %> <%= currentYear %></span>
+</div>
+
+<!-- Month/Year Filter -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/dashboard" id="dashboardFilter">
+    <select name="month" onchange="document.getElementById('dashboardFilter').submit()">
+      <% months.forEach(m => { %>
+        <option value="<%= m %>" <%= m === currentMonth ? 'selected' : '' %>><%= m %></option>
+      <% }) %>
+    </select>
+    <input type="number" name="year" value="<%= currentYear %>" min="2020" max="2030" onchange="document.getElementById('dashboardFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid">
+  <div class="stat-card stat-green">
+    <div class="stat-info">
+      <h3>Total Collection</h3>
+      <p class="stat-value">₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-info">
+      <h3>Outstanding Balance</h3>
+      <p class="stat-value">₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Total to Collect</h3>
+      <p class="stat-value">₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Settled Rooms</h3>
+      <p class="stat-value"><%= settledCount %> / 10</p>
+    </div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-info">
+      <h3>Total Expenses</h3>
+      <p class="stat-value">₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+</div>
+
+<!-- Net Income Highlight -->
+<div class="net-income-card <%= netIncome >= 0 ? 'net-positive' : 'net-negative' %>">
+  <div class="net-income-label">NET INCOME - <%= currentMonth %> <%= currentYear %></div>
+  <div class="net-income-value">₱<%= netIncome.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
+  <div class="net-income-detail">Collection ₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %> − Expenses ₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
+</div>
+
+<!-- Room Collection Table -->
+<div class="card">
+  <div class="card-header">
+    <h2>Room Collection - <%= currentMonth %></h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Room</th>
+          <th>Tenants</th>
+          <th>Total</th>
+          <th>Collected</th>
+          <th>Status</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% roomSummary.forEach(room => { %>
+        <tr>
+          <td><strong>ROOM <%= room.room_number %></strong></td>
+          <td><%= room.tenantCount %> person<%= room.tenantCount !== 1 ? 's' : '' %></td>
+          <td>₱<%= room.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= (room.collected || 0).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>
+            <span class="status-badge status-<%= room.status === 'SETTLED' ? 'settled' : room.status === 'UNSETTLED' ? 'unsettled' : 'none' %>">
+              <%= room.status %>
+            </span>
+          </td>
+          <td>₱<%= room.balance.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2"><strong>OVERALL TOTAL</strong></td>
+          <td><strong>₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td></td>
+          <td><strong>₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Charts Section -->
+<div class="charts-grid">
+  <!-- Expense Pie Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Expense Breakdown - <%= currentMonth %></h2>
+    </div>
+    <div class="chart-container">
+      <% if (Object.keys(expenseCategories).length === 0) { %>
+        <p class="text-center text-muted" style="padding: 40px 0;">No expenses recorded this month</p>
+      <% } else { %>
+        <canvas id="expensePieChart"></canvas>
+      <% } %>
+    </div>
+    <% if (Object.keys(expenseCategories).length > 0) { %>
+    <div class="chart-legend">
+      <% Object.entries(expenseCategories).forEach(([cat, amount]) => { %>
+        <div class="legend-item">
+          <span class="legend-label"><%= cat %></span>
+          <span class="legend-value">₱<%= amount.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></span>
+        </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Billing Breakdown Bar Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Billing Breakdown - <%= currentMonth %></h2>
+    </div>
+    <div class="chart-container">
+      <canvas id="billingBarChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Room Collection Per Room Bar Chart -->
+<div class="card">
+  <div class="card-header">
+    <h2>Collection Per Room - <%= currentMonth %></h2>
+  </div>
+  <div class="chart-container chart-wide">
+    <canvas id="roomCollectionChart"></canvas>
+  </div>
+</div>
+
+<!-- Recent Expenses -->
+<div class="card">
+  <div class="card-header">
+    <h2>Expenses - <%= currentMonth %></h2>
+    <a href="/expenses" class="btn btn-sm">View All</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (expenses.length === 0) { %>
+        <tr><td colspan="3" class="text-center">No expenses recorded</td></tr>
+        <% } %>
+        <% expenses.slice(0, 5).forEach(exp => { %>
+        <tr>
+          <td><%= exp.date %></td>
+          <td>₱<%= exp.amount.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td><%= exp.reason %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Expense Pie Chart
+  <% if (Object.keys(expenseCategories).length > 0) { %>
+  const expenseCtx = document.getElementById('expensePieChart').getContext('2d');
+  new Chart(expenseCtx, {
+    type: 'doughnut',
+    data: {
+      labels: <%- JSON.stringify(Object.keys(expenseCategories)) %>,
+      datasets: [{
+        data: <%- JSON.stringify(Object.values(expenseCategories)) %>,
+        backgroundColor: [
+          '#000035', '#1a237e', '#34a853', '#fbbc04', '#ff6d01', '#46bdc6', '#7b1fa2', '#ea4335'
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 16, usePointStyle: true }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((context.parsed / total) * 100).toFixed(1);
+              return `${context.label}: ₱${context.parsed.toLocaleString()} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+  <% } %>
+
+  // Billing Breakdown Bar Chart
+  const billingCtx = document.getElementById('billingBarChart').getContext('2d');
+  new Chart(billingCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Rent', 'WiFi', 'Electric', 'Water', 'Garbage', 'Penalty'],
+      datasets: [{
+        label: 'Amount (₱)',
+        data: [
+          <%= billingBreakdown.rent %>,
+          <%= billingBreakdown.wifi %>,
+          <%= billingBreakdown.electric %>,
+          <%= billingBreakdown.water %>,
+          <%= billingBreakdown.garbage %>,
+          <%= billingBreakdown.penalty %>
+        ],
+        backgroundColor: ['#000035', '#34a853', '#fbbc04', '#46bdc6', '#ff6d01', '#ea4335'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `₱${context.parsed.y.toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { return '₱' + value.toLocaleString(); }
+          }
+        }
+      }
+    }
+  });
+
+  // Room Collection Chart
+  const roomCtx = document.getElementById('roomCollectionChart').getContext('2d');
+  new Chart(roomCtx, {
+    type: 'bar',
+    data: {
+      labels: <%- JSON.stringify(roomSummary.map(r => 'Room ' + r.room_number)) %>,
+      datasets: [{
+        label: 'Collection (₱)',
+        data: <%- JSON.stringify(roomSummary.map(r => r.total)) %>,
+        backgroundColor: <%- JSON.stringify(roomSummary.map(r => r.status === 'SETTLED' ? '#34a853' : r.status === 'UNSETTLED' ? '#ea4335' : '#ccc')) %>,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `₱${context.parsed.y.toLocaleString()}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { return '₱' + value.toLocaleString(); }
+          }
+        }
+      }
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>

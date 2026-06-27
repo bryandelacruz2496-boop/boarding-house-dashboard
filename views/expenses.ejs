@@ -1,0 +1,229 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Expenses</h1>
+</div>
+
+<!-- Filter -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/expenses" id="expenseFilter">
+    <select name="month" onchange="document.getElementById('expenseFilter').submit()">
+      <% for (let i = 1; i <= 12; i++) { %>
+        <option value="<%= i %>" <%= i === month ? 'selected' : '' %>>
+          <%= new Date(2000, i-1).toLocaleString('default', {month: 'long'}) %>
+        </option>
+      <% } %>
+    </select>
+    <input type="number" name="year" value="<%= year %>" min="2020" max="2030" onchange="document.getElementById('expenseFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid">
+  <div class="stat-card stat-green">
+    <div class="stat-info">
+      <h3>Fixed - Paid</h3>
+      <p class="stat-value">₱<%= totalPaid.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-info">
+      <h3>Fixed - Unpaid</h3>
+      <p class="stat-value">₱<%= totalUnpaid.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-info">
+      <h3>Other Expenses</h3>
+      <p class="stat-value">₱<%= totalVariable.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Total Monthly</h3>
+      <p class="stat-value">₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+</div>
+
+<!-- Fixed Expenses with Payment Status -->
+<div class="card">
+  <div class="card-header">
+    <h2>Fixed Monthly Expenses — <%= new Date(2000, month-1).toLocaleString('default', {month: 'long'}) %> <%= year %></h2>
+    <span class="badge"><%= fixedExpenses.filter(f => f.paid).length %>/<%= fixedExpenses.length %> paid</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Expense</th>
+          <th>Amount</th>
+          <th>Date Paid</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% fixedExpenses.forEach(fixed => { %>
+        <tr class="<%= fixed.paid ? 'row-paid' : 'row-unpaid' %>">
+          <td>
+            <form method="POST" action="/expenses/fixed/toggle-paid/<%= fixed.id %>" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
+              <button type="submit" class="btn-status <%= fixed.paid ? 'status-paid' : 'status-unpaid' %>">
+                <%= fixed.paid ? 'PAID' : 'UNPAID' %>
+              </button>
+            </form>
+          </td>
+          <td>
+            <form method="POST" action="/expenses/fixed/update/<%= fixed.id %>" class="inline-edit-form">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
+              <input type="text" name="name" value="<%= fixed.name %>" class="inline-input">
+          </td>
+          <td>
+              <input type="number" name="amount" value="<%= fixed.amount %>" step="0.01" class="inline-input inline-input-amount">
+          </td>
+          <td>
+            <% if (fixed.paid_date) { %>
+              <span class="text-muted"><%= fixed.paid_date %></span>
+            <% } else { %>
+              <span class="text-muted">—</span>
+            <% } %>
+          </td>
+          <td>
+              <button type="submit" class="btn btn-sm btn-primary">Save</button>
+            </form>
+            <form method="POST" action="/expenses/fixed/delete/<%= fixed.id %>" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
+              <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td></td>
+          <td><strong>Total Fixed</strong></td>
+          <td><strong>₱<%= totalFixed.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Add Fixed Expense -->
+  <form method="POST" action="/expenses/fixed/add" class="form-inline" style="margin-top: 16px; border-top: 1px solid #eee; padding-top: 16px;">
+    <input type="hidden" name="month" value="<%= month %>">
+    <input type="hidden" name="year" value="<%= year %>">
+    <div class="form-group">
+      <label>New Fixed Expense</label>
+      <input type="text" name="name" required placeholder="e.g., Insurance">
+    </div>
+    <div class="form-group">
+      <label>Amount (₱)</label>
+      <input type="number" name="amount" step="0.01" required placeholder="0.00">
+    </div>
+    <button type="submit" class="btn btn-primary">Add Fixed</button>
+  </form>
+</div>
+
+<!-- Variable Expenses (one-time) -->
+<div class="card">
+  <div class="card-header">
+    <h2>Other Expenses</h2>
+  </div>
+
+  <!-- Add Expense -->
+  <form method="POST" action="/expenses/add" class="form-inline" style="margin-bottom: 16px;">
+    <div class="form-group">
+      <label for="date">Date</label>
+      <input type="date" id="date" name="date" required value="<%= new Date().toISOString().split('T')[0] %>">
+    </div>
+    <div class="form-group">
+      <label for="amount">Amount (₱)</label>
+      <input type="number" id="amount" name="amount" step="0.01" required placeholder="0.00">
+    </div>
+    <div class="form-group">
+      <label for="reason">Reason</label>
+      <select id="reason" name="reason" required>
+        <option value="" disabled selected>Select reason</option>
+        <option value="Boarding house electric">Boarding house electric</option>
+        <option value="Boarding house water bill">Boarding house water bill</option>
+        <option value="Pansol electric bill">Pansol electric bill</option>
+        <option value="Bryan expense">Bryan expense</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-group" id="otherReasonGroup" style="display:none;">
+      <label for="otherReason">Specify</label>
+      <input type="text" id="otherReason" placeholder="Enter reason">
+    </div>
+    <button type="submit" class="btn btn-primary">Add</button>
+  </form>
+  <script>
+    document.getElementById('reason').addEventListener('change', function() {
+      const otherGroup = document.getElementById('otherReasonGroup');
+      const otherInput = document.getElementById('otherReason');
+      if (this.value === 'Other') {
+        otherGroup.style.display = 'block';
+        otherInput.required = true;
+        otherInput.name = 'reason';
+        this.name = '';
+      } else {
+        otherGroup.style.display = 'none';
+        otherInput.required = false;
+        otherInput.name = '';
+        this.name = 'reason';
+      }
+    });
+  </script>
+
+  <!-- Expenses Table -->
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Reason</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (expenses.length === 0) { %>
+        <tr><td colspan="4" class="text-center">No other expenses recorded this month</td></tr>
+        <% } %>
+        <% expenses.forEach(exp => { %>
+        <tr>
+          <td><%= exp.date %></td>
+          <td>₱<%= exp.amount.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td><%= exp.reason %></td>
+          <td>
+            <form method="POST" action="/expenses/delete/<%= exp.id %>" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <% if (expenses.length > 0) { %>
+      <tfoot>
+        <tr>
+          <td></td>
+          <td><strong>₱<%= totalVariable.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      <% } %>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
+

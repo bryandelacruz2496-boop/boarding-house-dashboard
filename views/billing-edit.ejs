@@ -1,0 +1,240 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Billing - Room <%= room.room_number %></h1>
+  <span class="badge"><%= month %> <%= year %></span>
+</div>
+
+<!-- Tenant Info -->
+<div class="card info-card">
+  <div class="info-grid">
+    <div class="info-item">
+      <span class="info-label">Tenants in Room</span>
+      <span class="info-value"><%= tenantCount %> person<%= tenantCount !== 1 ? 's' : '' %></span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">WiFi Subscribers</span>
+      <span class="info-value"><%= wifiTenantCount %> of <%= tenantCount %> (₱<%= wifiPerPerson %> × <%= wifiTenantCount %> = ₱<%= wifiPerPerson * wifiTenantCount %>)</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Tenants</span>
+      <span class="info-value">
+        <% tenants.forEach((t, i) => { %>
+          <%= t.name %><%= t.has_wifi ? ' (WiFi)' : '' %><%= i < tenants.length - 1 ? ', ' : '' %>
+        <% }) %>
+        <% if (tenants.length === 0) { %>None<% } %>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>Billing Details</h2>
+  </div>
+  <form method="POST" action="/billing/save" class="billing-form" id="billingForm">
+    <input type="hidden" name="room_id" value="<%= room.id %>">
+    <input type="hidden" name="month" value="<%= month %>">
+    <input type="hidden" name="year" value="<%= year %>">
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="rent">Rent (₱)</label>
+        <input type="number" id="rent" name="rent" step="0.01" value="<%= billing ? billing.rent : 4500 %>" onchange="computeTotal()">
+      </div>
+
+      <div class="form-group">
+        <label for="wifi">WiFi (₱) <small class="text-muted">₱200 × <%= wifiTenantCount %> subscriber<%= wifiTenantCount !== 1 ? 's' : '' %></small></label>
+        <input type="number" id="wifi" name="wifi" step="0.01" value="<%= billing ? billing.wifi : (wifiPerPerson * wifiTenantCount) %>" onchange="computeTotal()">
+      </div>
+
+      <!-- Electricity Computation -->
+      <div class="form-group full-width">
+        <label>Electricity Computation</label>
+        <div class="electric-grid">
+          <div>
+            <label for="previous_reading" class="label-small">Previous Reading (kWh)</label>
+            <input type="number" id="previous_reading" name="previous_reading" step="0.01" 
+              value="<%= prevReading %>" readonly class="computed-field" title="Auto-filled from last month's current reading">
+          </div>
+          <div>
+            <label for="current_reading" class="label-small">Current Reading (kWh)</label>
+            <input type="number" id="current_reading" name="current_reading" step="0.01" 
+              value="<%= billing ? billing.current_reading : 0 %>" onchange="computeElectric()">
+          </div>
+          <div>
+            <label for="rate_per_kwh" class="label-small">Rate per kWh (₱)</label>
+            <input type="number" id="rate_per_kwh" name="rate_per_kwh" step="0.01" 
+              value="<%= billing ? billing.rate_per_kwh : 12 %>" onchange="computeElectric()">
+          </div>
+          <div>
+            <label class="label-small">Consumption</label>
+            <input type="text" id="consumption_display" readonly class="computed-field">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="electric_bill">Electric Bill (₱) <small class="text-muted">Auto-computed</small></label>
+        <input type="number" id="electric_bill" name="electric_bill" step="0.01" value="<%= billing ? billing.electric_bill : 0 %>" onchange="computeTotal()">
+      </div>
+
+      <div class="form-group">
+        <label for="water_bill">Water Bill (₱)</label>
+        <input type="number" id="water_bill" name="water_bill" step="0.01" value="<%= billing ? billing.water_bill : 0 %>" onchange="computeTotal()">
+      </div>
+
+      <div class="form-group">
+        <label for="garbage_fee">Garbage Fee (₱)</label>
+        <input type="number" id="garbage_fee" name="garbage_fee" step="0.01" value="<%= billing ? billing.garbage_fee : 0 %>" onchange="computeTotal()">
+      </div>
+
+      <div class="form-group">
+        <label for="penalty">Penalty (₱)</label>
+        <input type="number" id="penalty" name="penalty" step="0.01" value="<%= billing ? billing.penalty : 0 %>" onchange="computeTotal()">
+      </div>
+
+      <div class="form-group">
+        <label for="payment_status">Payment Status</label>
+        <select id="payment_status" name="payment_status">
+          <option value="UNSETTLED" <%= billing && billing.payment_status === 'UNSETTLED' ? 'selected' : '' %>>UNSETTLED</option>
+          <option value="SETTLED" <%= billing && billing.payment_status === 'SETTLED' ? 'selected' : '' %>>SETTLED</option>
+        </select>
+      </div>
+
+      <!-- Total Display -->
+      <div class="form-group full-width">
+        <div class="total-display">
+          <span>TOTAL:</span>
+          <span id="totalDisplay">₱0.00</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Billing</button>
+      <a href="/billing?month=<%= month %>&year=<%= year %>" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<% if (billing) { %>
+<div class="card">
+  <form method="POST" action="/billing/delete/<%= billing.id %>">
+    <input type="hidden" name="month" value="<%= month %>">
+    <input type="hidden" name="year" value="<%= year %>">
+    <button type="submit" class="btn btn-danger">Delete Billing</button>
+  </form>
+</div>
+<% } %>
+
+<!-- Per-Tenant Breakdown -->
+<% if (tenantCount > 0) { %>
+<div class="card">
+  <div class="card-header">
+    <h2>Per-Tenant Breakdown</h2>
+    <span class="badge"><%= tenantCount %> tenants | <%= wifiTenantCount %> with WiFi</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table" id="tenantBreakdownTable">
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Rent Share</th>
+          <th>WiFi</th>
+          <th>Electric Share</th>
+          <th>Water Share</th>
+          <th>Garbage Share</th>
+          <th>Total Per Person</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tenants.forEach(tenant => { %>
+        <tr>
+          <td><strong><%= tenant.name %></strong></td>
+          <td class="tenant-rent">₱0.00</td>
+          <td class="tenant-wifi-<%= tenant.has_wifi ? 'yes' : 'no' %>">
+            <% if (tenant.has_wifi) { %>
+              WiFi ₱<%= wifiPerPerson.toFixed(2) %>
+            <% } else { %>
+              <span class="text-muted">—</span>
+            <% } %>
+          </td>
+          <td class="tenant-electric">₱0.00</td>
+          <td class="tenant-water">₱0.00</td>
+          <td class="tenant-garbage">₱0.00</td>
+          <td class="tenant-total" data-has-wifi="<%= tenant.has_wifi ? '1' : '0' %>"><strong>₱0.00</strong></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<script>
+  const tenantCount = <%= tenantCount %>;
+  const wifiPerPerson = <%= wifiPerPerson %>;
+  const wifiTenantCount = <%= wifiTenantCount %>;
+
+  function computeElectric() {
+    const prev = parseFloat(document.getElementById('previous_reading').value) || 0;
+    const curr = parseFloat(document.getElementById('current_reading').value) || 0;
+    const rate = parseFloat(document.getElementById('rate_per_kwh').value) || 12;
+
+    const consumption = curr - prev;
+    const electricBill = consumption > 0 ? consumption * rate : 0;
+
+    document.getElementById('consumption_display').value = consumption.toFixed(2) + ' kWh';
+    document.getElementById('electric_bill').value = electricBill.toFixed(2);
+
+    computeTotal();
+  }
+
+  function computeTotal() {
+    const rent = parseFloat(document.getElementById('rent').value) || 0;
+    const wifi = parseFloat(document.getElementById('wifi').value) || 0;
+    const electric = parseFloat(document.getElementById('electric_bill').value) || 0;
+    const water = parseFloat(document.getElementById('water_bill').value) || 0;
+    const garbage = parseFloat(document.getElementById('garbage_fee').value) || 0;
+    const penalty = parseFloat(document.getElementById('penalty').value) || 0;
+
+    const total = rent + wifi + electric + water + garbage + penalty;
+    document.getElementById('totalDisplay').textContent = '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
+
+    // Update per-tenant breakdown
+    if (tenantCount > 0) {
+      const rentShare = rent / tenantCount;
+      const electricShare = electric / tenantCount;
+      const waterShare = water / tenantCount;
+      const garbageShare = garbage / tenantCount;
+
+      document.querySelectorAll('.tenant-rent').forEach(el => {
+        el.textContent = '₱' + rentShare.toFixed(2);
+      });
+      document.querySelectorAll('.tenant-electric').forEach(el => {
+        el.textContent = '₱' + electricShare.toFixed(2);
+      });
+      document.querySelectorAll('.tenant-water').forEach(el => {
+        el.textContent = '₱' + waterShare.toFixed(2);
+      });
+      document.querySelectorAll('.tenant-garbage').forEach(el => {
+        el.textContent = '₱' + garbageShare.toFixed(2);
+      });
+
+      // Total per person - different for wifi vs non-wifi tenants
+      document.querySelectorAll('.tenant-total').forEach(el => {
+        const hasWifi = el.getAttribute('data-has-wifi') === '1';
+        const personTotal = rentShare + (hasWifi ? wifiPerPerson : 0) + electricShare + waterShare + garbageShare;
+        el.innerHTML = '<strong>₱' + personTotal.toFixed(2) + '</strong>';
+      });
+    }
+  }
+
+  // Run on page load
+  computeElectric();
+  computeTotal();
+</script>
+
+<%- include('partials/footer') %>
+

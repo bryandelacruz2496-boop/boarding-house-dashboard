@@ -1,0 +1,127 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Monthly Billing</h1>
+  <span class="badge"><%= month %> <%= year %></span>
+</div>
+
+<!-- Month Selector -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/billing" id="billingFilter">
+    <select name="month" onchange="document.getElementById('billingFilter').submit()">
+      <% months.forEach(m => { %>
+        <option value="<%= m %>" <%= m === month ? 'selected' : '' %>><%= m %></option>
+      <% }) %>
+    </select>
+    <input type="number" name="year" value="<%= year %>" min="2020" max="2030" onchange="document.getElementById('billingFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<!-- Summary -->
+<div class="stats-grid">
+  <div class="stat-card stat-green">
+    <div class="stat-info">
+      <h3>Settled</h3>
+      <p class="stat-value">₱<%= totalSettled.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-info">
+      <h3>Unsettled</h3>
+      <p class="stat-value">₱<%= totalUnsettled.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Total Billing</h3>
+      <p class="stat-value">₱<%= overallTotal.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-info">
+      <h3>Expenses</h3>
+      <p class="stat-value">₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card <%= netIncome >= 0 ? 'stat-green' : 'stat-red' %>">
+    <div class="stat-info">
+      <h3>Net Income</h3>
+      <p class="stat-value">₱<%= netIncome.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+</div>
+
+<!-- Billing Table -->
+<div class="card">
+  <div class="card-header">
+    <h2>Room Billing - <%= month %> <%= year %></h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Room</th>
+          <th>Rent</th>
+          <th>WiFi</th>
+          <th>Electric</th>
+          <th>Water</th>
+          <th>Garbage</th>
+          <th>Penalty</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% roomBillings.forEach(({ room, billing }) => { %>
+        <tr>
+          <td><strong>ROOM <%= room.room_number %></strong></td>
+          <% if (billing) { %>
+            <td>₱<%= billing.rent.toLocaleString('en-PH') %></td>
+            <td>₱<%= billing.wifi.toLocaleString('en-PH') %></td>
+            <td>₱<%= billing.electric_bill.toLocaleString('en-PH') %></td>
+            <td>₱<%= billing.water_bill.toLocaleString('en-PH') %></td>
+            <td>₱<%= billing.garbage_fee.toLocaleString('en-PH') %></td>
+            <td>₱<%= billing.penalty.toLocaleString('en-PH') %></td>
+            <td><strong>₱<%= billing.total.toLocaleString('en-PH') %></strong></td>
+            <td>
+              <form method="POST" action="/billing/toggle-status/<%= billing.id %>" style="display:inline">
+                <input type="hidden" name="month" value="<%= month %>">
+                <input type="hidden" name="year" value="<%= year %>">
+                <button type="submit" class="btn-status <%= billing.payment_status === 'SETTLED' ? 'status-paid' : 'status-unpaid' %>">
+                  <%= billing.payment_status %>
+                </button>
+              </form>
+            </td>
+          <% } else { %>
+            <td colspan="7" class="text-center text-muted">No billing created</td>
+            <td></td>
+          <% } %>
+          <td>
+            <a href="/billing/edit/<%= room.id %>?month=<%= month %>&year=<%= year %>" class="btn btn-sm btn-primary">
+              <%= billing ? 'Edit' : 'Create' %>
+            </a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>TOTAL</strong></td>
+          <td><strong>₱<%= columnTotals.rent.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= columnTotals.wifi.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= columnTotals.electric.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= columnTotals.water.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= columnTotals.garbage.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= columnTotals.penalty.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= overallTotal.toLocaleString('en-PH') %></strong></td>
+          <td><strong>₱<%= totalSettled.toLocaleString('en-PH') %> settled</strong></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

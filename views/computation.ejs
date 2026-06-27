@@ -1,0 +1,134 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Tenant Computation</h1>
+  <span class="badge"><%= month %> <%= year %></span>
+</div>
+
+<!-- Filter -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/computation" id="computationFilter">
+    <select name="month" onchange="document.getElementById('computationFilter').submit()">
+      <% months.forEach(m => { %>
+        <option value="<%= m %>" <%= m === month ? 'selected' : '' %>><%= m %></option>
+      <% }) %>
+    </select>
+    <input type="number" name="year" value="<%= year %>" min="2020" max="2030" onchange="document.getElementById('computationFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<!-- Summary -->
+<div class="stats-grid">
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Total Tenants</h3>
+      <p class="stat-value"><%= roomComputations.reduce((sum, rc) => sum + rc.tenantCount, 0) %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-info">
+      <h3>WiFi Rate</h3>
+      <p class="stat-value">₱<%= wifiPerPerson %>/person</p>
+    </div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-info">
+      <h3>Total Expected Collection</h3>
+      <p class="stat-value">₱<%= totalAllTenants.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+</div>
+
+<!-- Per-Room Computation -->
+<% roomComputations.forEach(rc => { %>
+<div class="card">
+  <div class="card-header">
+    <h2>Room <%= rc.room.room_number %></h2>
+    <span class="badge"><%= rc.tenantCount %> tenant<%= rc.tenantCount !== 1 ? 's' : '' %></span>
+  </div>
+
+  <% if (rc.tenantCount === 0) { %>
+    <p class="text-muted">No active tenants in this room</p>
+  <% } else if (!rc.billing) { %>
+    <p class="text-muted">No billing created for this month. <a href="/billing/edit/<%= rc.room.id %>?month=<%= month %>&year=<%= year %>">Create billing</a></p>
+  <% } else { %>
+
+  <!-- Electricity Computation -->
+  <div class="computation-info">
+    <div class="comp-row">
+      <span>Electric: Previous Reading <strong><%= rc.billing.previous_reading %></strong> → Current <strong><%= rc.billing.current_reading %></strong></span>
+      <span>Consumption: <strong><%= rc.consumption %> kWh</strong> × ₱<%= rc.billing.rate_per_kwh %>/kWh = <strong>₱<%= rc.billing.electric_bill.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
+    </div>
+    <div class="comp-row">
+      <span>WiFi: ₱<%= wifiPerPerson %> × <%= rc.wifiTenantCount %> subscriber<%= rc.wifiTenantCount !== 1 ? 's' : '' %> = <strong>₱<%= (wifiPerPerson * rc.wifiTenantCount).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
+    </div>
+  </div>
+
+  <!-- Per Tenant Table -->
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Rent Share</th>
+          <th>WiFi</th>
+          <th>Electric Share</th>
+          <th>Water Share</th>
+          <th>Garbage Share</th>
+          <th>Penalty Share</th>
+          <th>Total to Pay</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rc.tenants.forEach(tenant => { %>
+        <tr class="<%= tenant.paid ? 'row-paid' : '' %>">
+          <td><strong><%= tenant.name %></strong></td>
+          <td>₱<%= tenant.rentShare.toFixed(2) %></td>
+          <td>
+            <% if (tenant.has_wifi) { %>
+              WiFi ₱<%= tenant.wifiCost.toFixed(2) %>
+            <% } else { %>
+              <span class="text-muted">— (no WiFi)</span>
+            <% } %>
+          </td>
+          <td>₱<%= tenant.electricShare.toFixed(2) %></td>
+          <td>₱<%= tenant.waterShare.toFixed(2) %></td>
+          <td>₱<%= tenant.garbageShare.toFixed(2) %></td>
+          <td>₱<%= tenant.penaltyShare.toFixed(2) %></td>
+          <td><strong class="text-primary">₱<%= tenant.total.toFixed(2) %></strong></td>
+          <td>
+            <form method="POST" action="/computation/toggle-pay/<%= tenant.id %>/<%= rc.billing.id %>" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
+              <button type="submit" class="btn-status <%= tenant.paid ? 'status-paid' : 'status-unpaid' %>">
+                <%= tenant.paid ? 'PAID' : 'UNPAID' %>
+              </button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>Room Total</strong></td>
+          <td colspan="6"></td>
+          <td><strong>₱<%= rc.tenants.reduce((sum, t) => sum + t.total, 0).toFixed(2) %></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Receipt Buttons -->
+  <div class="receipt-actions">
+    <a href="/computation/receipt/<%= rc.room.id %>?month=<%= month %>&year=<%= year %>" class="btn btn-sm btn-primary">Print Room Receipt</a>
+    <% rc.tenants.forEach(tenant => { %>
+      <a href="/computation/receipt/<%= rc.room.id %>/<%= tenant.id %>?month=<%= month %>&year=<%= year %>" class="btn btn-sm btn-secondary">Receipt: <%= tenant.name %></a>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+<% }) %>
+
+<%- include('partials/footer') %>

@@ -5,7 +5,11 @@ const dns = require('dns');
 // Fix for ISPs that don't support SRV DNS lookups
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://bryandelacruz2496_db_user:FXcpspBTEQLJ5B97@boarding-house-cluster.abpsdnz.mongodb.net/?retryWrites=true&w=majority';
+const MONGO_URI = process.env.MONGODB_URI;
+if (!MONGO_URI) {
+  console.error('ERROR: MONGODB_URI environment variable is required');
+  process.exit(1);
+}
 const DB_NAME = 'boarding_house';
 
 let db;

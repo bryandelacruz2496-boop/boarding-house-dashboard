@@ -48,6 +48,17 @@ app.get('/', (req, res) => {
   else res.redirect('/login');
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Self-ping to prevent Render free tier from sleeping
+setInterval(() => {
+  const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  fetch(`${url}/health`).catch(() => {});
+}, 5 * 60 * 1000); // every 5 minutes
+
 // Start server after DB connects
 connectDB().then(() => {
   app.listen(PORT, () => {

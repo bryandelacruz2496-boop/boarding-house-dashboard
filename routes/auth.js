@@ -25,8 +25,8 @@ router.post('/login', async (req, res) => {
   req.session.role = user.role || 'admin';
   req.session.room_id = user.room_id || null;
 
-  // Force password change on first login
-  if (user.must_change_password) {
+  // Force password change on first login (for tenants)
+  if (user.role === 'tenant' && user.must_change_password !== false) {
     return res.redirect('/change-password');
   }
 

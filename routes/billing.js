@@ -80,7 +80,7 @@ router.post('/save', async (req, res) => {
     rent: parseFloat(rent||0), wifi: parseFloat(wifi||0), electric_bill: parseFloat(electric_bill||0),
     water_bill: parseFloat(water_bill||0), garbage_fee: parseFloat(garbage_fee||0), penalty: parseFloat(penalty||0),
     total, previous_reading: parseFloat(previous_reading||0), current_reading: parseFloat(current_reading||0),
-    rate_per_kwh: parseFloat(rate_per_kwh||12), payment_status: payment_status || 'UNSETTLED'
+    rate_per_kwh: parseFloat(rate_per_kwh||15), payment_status: payment_status || 'UNSETTLED'
   };
 
   await db.collection('billing').updateOne(

@@ -65,7 +65,7 @@
           <div>
             <label for="rate_per_kwh" class="label-small">Rate per kWh (₱)</label>
             <input type="number" id="rate_per_kwh" name="rate_per_kwh" step="0.01" 
-              value="<%= billing ? billing.rate_per_kwh : 12 %>" onchange="computeElectric()">
+              value="<%= billing ? billing.rate_per_kwh : 15 %>" onchange="computeElectric()">
           </div>
           <div>
             <label class="label-small">Consumption</label>
@@ -180,7 +180,7 @@
   function computeElectric() {
     const prev = parseFloat(document.getElementById('previous_reading').value) || 0;
     const curr = parseFloat(document.getElementById('current_reading').value) || 0;
-    const rate = parseFloat(document.getElementById('rate_per_kwh').value) || 12;
+    const rate = parseFloat(document.getElementById('rate_per_kwh').value) || 15;
 
     const consumption = curr - prev;
     const electricBill = consumption > 0 ? consumption * rate : 0;

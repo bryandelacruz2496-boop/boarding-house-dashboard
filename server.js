@@ -45,6 +45,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Force password change middleware
+app.use(async (req, res, next) => {
+  if (req.session.userId && req.path !== '/change-password' && req.path !== '/logout' && !req.path.startsWith('/css') && !req.path.startsWith('/js')) {
+    const { getDB } = require('./database');
+    const { ObjectId } = require('mongodb');
+    const db = getDB();
+    const user = await db.collection('users').findOne({ _id: new ObjectId(req.session.userId) });
+    if (user && user.must_change_password) {
+      return res.redirect('/change-password');
+    }
+  }
+  next();
+});
+
 // Routes
 app.use('/', require('./routes/auth'));
 app.use('/api', require('./routes/api'));

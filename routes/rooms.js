@@ -141,6 +141,7 @@ router.post('/:id/account/create', async (req, res) => {
     password: hash,
     role: 'tenant',
     room_id: roomId,
+    must_change_password: true,
     created_at: new Date()
   });
 
@@ -156,7 +157,7 @@ router.post('/:id/account/reset', async (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   await db.collection('users').updateOne(
     { room_id: roomId, role: 'tenant' },
-    { $set: { password: hash } }
+    { $set: { password: hash, must_change_password: true } }
   );
 
   res.redirect(`/rooms?month=${month}&year=${year}`);

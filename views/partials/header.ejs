@@ -17,7 +17,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-profile">
         <div class="profile-avatar">
-          <span>&#127936;</span>
+          <span><%= user.avatar || '&#127936;' %></span>
         </div>
         <div class="profile-name"><%= user.username.toUpperCase() %></div>
         <div class="profile-role"><%= user.role === 'tenant' ? 'Tenant' : 'Property Manager' %></div>

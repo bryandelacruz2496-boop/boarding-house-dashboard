@@ -41,7 +41,7 @@ function requireTenant(req, res, next) {
 
 // Make user available in all views
 app.use((req, res, next) => {
-  res.locals.user = req.session.userId ? { id: req.session.userId, username: req.session.username, role: req.session.role, room_id: req.session.room_id } : null;
+  res.locals.user = req.session.userId ? { id: req.session.userId, username: req.session.username, role: req.session.role, room_id: req.session.room_id, avatar: req.session.avatar } : null;
   next();
 });
 

@@ -24,6 +24,7 @@ router.post('/login', async (req, res) => {
   req.session.username = user.username;
   req.session.role = user.role || 'admin';
   req.session.room_id = user.room_id || null;
+  req.session.avatar = user.avatar || null;
 
   // Force password change on first login (for tenants)
   if (user.role === 'tenant' && user.must_change_password !== false) {
@@ -41,7 +42,7 @@ router.get('/change-password', (req, res) => {
 
 router.post('/change-password', async (req, res) => {
   if (!req.session.userId) return res.redirect('/login');
-  const { password, confirm_password } = req.body;
+  const { password, confirm_password, avatar } = req.body;
 
   if (!password || password.length < 4) {
     return res.render('change-password', { error: 'Password must be at least 4 characters' });
@@ -54,7 +55,7 @@ router.post('/change-password', async (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   await db.collection('users').updateOne(
     { _id: new (require('mongodb').ObjectId)(req.session.userId) },
-    { $set: { password: hash, must_change_password: false } }
+    { $set: { password: hash, must_change_password: false, avatar: avatar || '🐶' } }
   );
 
   if (req.session.role === 'tenant') return res.redirect('/tenant');

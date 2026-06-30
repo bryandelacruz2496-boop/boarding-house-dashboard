@@ -97,6 +97,53 @@ setInterval(() => {
   fetch(`${url}/health`).catch(() => {});
 }, 5 * 60 * 1000); // every 5 minutes
 
+// Auto-penalty: Add ₱250 to unsettled billings after the 12th of each month
+const PENALTY_AMOUNT = 250;
+
+async function applyLatePenalties() {
+  try {
+    const { getDB } = require('./database');
+    const db = getDB();
+    if (!db) return;
+
+    const now = new Date();
+    const currentDay = now.getDate();
+    if (currentDay <= 12) return; // Not past due date yet
+
+    const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+    const currentMonth = MONTHS[now.getMonth()];
+    const currentYear = now.getFullYear();
+
+    // Find all unsettled billings for the current month that haven't been penalized yet
+    const unsettledBillings = await db.collection('billing').find({
+      month: currentMonth,
+      year: currentYear,
+      payment_status: 'UNSETTLED',
+      penalty_applied: { $ne: true }
+    }).toArray();
+
+    for (const billing of unsettledBillings) {
+      const newPenalty = billing.penalty + PENALTY_AMOUNT;
+      const newTotal = billing.rent + billing.wifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + newPenalty;
+      await db.collection('billing').updateOne(
+        { _id: billing._id },
+        { $set: { penalty: newPenalty, total: newTotal, penalty_applied: true } }
+      );
+    }
+
+    if (unsettledBillings.length > 0) {
+      console.log(`[Penalty] Applied ₱${PENALTY_AMOUNT} penalty to ${unsettledBillings.length} unsettled billing(s) for ${currentMonth} ${currentYear}`);
+    }
+  } catch (err) {
+    console.error('[Penalty] Error applying penalties:', err.message);
+  }
+}
+
+// Run penalty check every hour
+setInterval(applyLatePenalties, 60 * 60 * 1000);
+// Also run on startup (in case server was down during the 12th)
+setTimeout(applyLatePenalties, 10000);
+
 // Start server after DB connects
 connectDB().then(() => {
   app.listen(PORT, () => {

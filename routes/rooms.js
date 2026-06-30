@@ -7,18 +7,18 @@ const WIFI_PER_PERSON = 200;
 
 async function updateRoomBilling(roomId) {
   const db = getDB();
-  const now = new Date();
-  const month = now.toLocaleString('default', { month: 'long' }).toUpperCase();
-  const year = now.getFullYear();
 
-  const billing = await db.collection('billing').findOne({ room_id: roomId, month, year });
-  if (!billing) return;
+  // Update wifi in ALL unsettled billings for this room
+  const billings = await db.collection('billing').find({ room_id: roomId, payment_status: { $ne: 'SETTLED' } }).toArray();
+  if (billings.length === 0) return;
 
   const wifiCount = await db.collection('tenants').countDocuments({ room_id: roomId, is_active: 1, has_wifi: 1 });
   const newWifi = WIFI_PER_PERSON * wifiCount;
-  const newTotal = billing.rent + newWifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + billing.penalty;
 
-  await db.collection('billing').updateOne({ _id: billing._id }, { $set: { wifi: newWifi, total: newTotal } });
+  for (const billing of billings) {
+    const newTotal = billing.rent + newWifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + billing.penalty;
+    await db.collection('billing').updateOne({ _id: billing._id }, { $set: { wifi: newWifi, total: newTotal } });
+  }
 }
 
 router.get('/', async (req, res) => {

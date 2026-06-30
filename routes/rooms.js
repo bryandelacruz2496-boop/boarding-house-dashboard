@@ -4,72 +4,120 @@ const { getDB } = require('../database');
 const { ObjectId } = require('mongodb');
 
 const WIFI_PER_PERSON = 200;
+const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 
-async function updateRoomBilling(roomId) {
+async function getWifiStatus(tenantId, month, year) {
+  const db = getDB();
+  const record = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: tenantId, month, year });
+  if (record) return record.has_wifi;
+  // Fallback to tenant's default has_wifi
+  const tenant = await db.collection('tenants').findOne({ _id: new ObjectId(tenantId) });
+  return tenant ? tenant.has_wifi : 0;
+}
+
+async function updateRoomBilling(roomId, month, year) {
   const db = getDB();
 
-  // Update wifi in ALL unsettled billings for this room
-  const billings = await db.collection('billing').find({ room_id: roomId, payment_status: { $ne: 'SETTLED' } }).toArray();
-  if (billings.length === 0) return;
+  const billing = await db.collection('billing').findOne({ room_id: roomId, month, year, payment_status: { $ne: 'SETTLED' } });
+  if (!billing) return;
 
-  const wifiCount = await db.collection('tenants').countDocuments({ room_id: roomId, is_active: 1, has_wifi: 1 });
-  const newWifi = WIFI_PER_PERSON * wifiCount;
-
-  for (const billing of billings) {
-    const newTotal = billing.rent + newWifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + billing.penalty;
-    await db.collection('billing').updateOne({ _id: billing._id }, { $set: { wifi: newWifi, total: newTotal } });
+  const tenants = await db.collection('tenants').find({ room_id: roomId, is_active: 1 }).toArray();
+  let wifiCount = 0;
+  for (const t of tenants) {
+    const wifiStatus = await getWifiStatus(t._id.toString(), month, year);
+    if (wifiStatus) wifiCount++;
   }
+
+  const newWifi = WIFI_PER_PERSON * wifiCount;
+  const newTotal = billing.rent + newWifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + billing.penalty;
+  await db.collection('billing').updateOne({ _id: billing._id }, { $set: { wifi: newWifi, total: newTotal } });
 }
 
 router.get('/', async (req, res) => {
   const db = getDB();
+  const now = new Date();
+  const month = (req.query.month || now.toLocaleString('default', { month: 'long' })).toUpperCase();
+  const year = parseInt(req.query.year) || now.getFullYear();
+
   const rooms = await db.collection('rooms').find().sort({ room_number: 1 }).toArray();
   const roomsWithTenants = [];
 
   for (const room of rooms) {
     const tenants = await db.collection('tenants').find({ room_id: room._id.toString(), is_active: 1 }).sort({ name: 1 }).toArray();
-    roomsWithTenants.push({ ...room, id: room._id.toString(), tenants: tenants.map(t => ({ ...t, id: t._id.toString() })) });
+    const tenantsWithWifi = [];
+    for (const t of tenants) {
+      const wifiStatus = await getWifiStatus(t._id.toString(), month, year);
+      tenantsWithWifi.push({ ...t, id: t._id.toString(), has_wifi: wifiStatus });
+    }
+    roomsWithTenants.push({ ...room, id: room._id.toString(), tenants: tenantsWithWifi });
   }
 
-  res.render('rooms', { rooms: roomsWithTenants });
+  res.render('rooms', { rooms: roomsWithTenants, month, year, months: MONTHS });
 });
 
 router.post('/update/:id', async (req, res) => {
   const db = getDB();
+  const { month, year } = req.body;
   await db.collection('rooms').updateOne({ _id: new ObjectId(req.params.id) }, { $set: { status: req.body.status } });
-  res.redirect('/rooms');
+  res.redirect(`/rooms?month=${month}&year=${year}`);
 });
 
 router.post('/:id/tenants/add', async (req, res) => {
   const db = getDB();
   const roomId = req.params.id;
+  const { name, month, year } = req.body;
   const count = await db.collection('tenants').countDocuments({ room_id: roomId, is_active: 1 });
-  if (count >= 5) return res.redirect('/rooms');
+  if (count >= 5) return res.redirect(`/rooms?month=${month}&year=${year}`);
 
-  await db.collection('tenants').insertOne({ room_id: roomId, name: req.body.name, has_wifi: 1, is_active: 1, created_at: new Date() });
+  const result = await db.collection('tenants').insertOne({ room_id: roomId, name, has_wifi: 1, is_active: 1, created_at: new Date() });
   await db.collection('rooms').updateOne({ _id: new ObjectId(roomId) }, { $set: { status: 'occupied' } });
-  await updateRoomBilling(roomId);
-  res.redirect('/rooms');
+
+  // Set wifi ON for this month
+  await db.collection('tenant_wifi_monthly').updateOne(
+    { tenant_id: result.insertedId.toString(), month, year: parseInt(year) },
+    { $set: { has_wifi: 1 } },
+    { upsert: true }
+  );
+
+  await updateRoomBilling(roomId, month, parseInt(year));
+  res.redirect(`/rooms?month=${month}&year=${year}`);
 });
 
 router.post('/:id/tenants/remove/:tenantId', async (req, res) => {
   const db = getDB();
   const roomId = req.params.id;
+  const { month, year } = req.body;
   await db.collection('tenants').updateOne({ _id: new ObjectId(req.params.tenantId) }, { $set: { is_active: 0 } });
 
   const remaining = await db.collection('tenants').countDocuments({ room_id: roomId, is_active: 1 });
   if (remaining === 0) await db.collection('rooms').updateOne({ _id: new ObjectId(roomId) }, { $set: { status: 'vacant' } });
 
-  await updateRoomBilling(roomId);
-  res.redirect('/rooms');
+  await updateRoomBilling(roomId, month, parseInt(year));
+  res.redirect(`/rooms?month=${month}&year=${year}`);
 });
 
 router.post('/:id/tenants/:tenantId/wifi', async (req, res) => {
   const db = getDB();
-  const tenant = await db.collection('tenants').findOne({ _id: new ObjectId(req.params.tenantId) });
-  await db.collection('tenants').updateOne({ _id: tenant._id }, { $set: { has_wifi: tenant.has_wifi ? 0 : 1 } });
-  await updateRoomBilling(req.params.id);
-  res.redirect('/rooms');
+  const { month, year } = req.body;
+  const tenantId = req.params.tenantId;
+  const roomId = req.params.id;
+
+  // Get current wifi status for this month
+  const currentStatus = await getWifiStatus(tenantId, month, parseInt(year));
+  const newStatus = currentStatus ? 0 : 1;
+
+  // Save per-month wifi status
+  await db.collection('tenant_wifi_monthly').updateOne(
+    { tenant_id: tenantId, month, year: parseInt(year) },
+    { $set: { has_wifi: newStatus } },
+    { upsert: true }
+  );
+
+  // Also update the tenant's default (for new months)
+  await db.collection('tenants').updateOne({ _id: new ObjectId(tenantId) }, { $set: { has_wifi: newStatus } });
+
+  await updateRoomBilling(roomId, month, parseInt(year));
+  res.redirect(`/rooms?month=${month}&year=${year}`);
 });
 
 module.exports = router;

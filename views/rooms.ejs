@@ -6,6 +6,19 @@
   <span class="dashboard-time" id="dashboardTime" style="margin-left: auto; font-size: 1.1rem; color: #1e293b; font-weight: 600;"></span>
 </div>
 
+<!-- Month/Year Filter -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/rooms" id="roomsFilter">
+    <select name="month" onchange="document.getElementById('roomsFilter').submit()">
+      <% months.forEach(m => { %>
+        <option value="<%= m %>" <%= m === month ? 'selected' : '' %>><%= m %></option>
+      <% }) %>
+    </select>
+    <input type="number" name="year" value="<%= year %>" min="2020" max="2030" onchange="document.getElementById('roomsFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
 <div class="rooms-grid">
   <% rooms.forEach(room => { %>
   <div class="room-card room-<%= room.status %>">
@@ -25,11 +38,15 @@
           <span class="tenant-name"><%= tenant.name %></span>
           <div class="tenant-actions">
             <form method="POST" action="/rooms/<%= room.id %>/tenants/<%= tenant.id %>/wifi" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
               <button type="submit" class="btn-wifi <%= tenant.has_wifi ? 'wifi-on' : 'wifi-off' %>" title="<%= tenant.has_wifi ? 'WiFi ON - click to turn off' : 'WiFi OFF - click to turn on' %>">
                 WiFi <%= tenant.has_wifi ? 'ON' : 'OFF' %>
               </button>
             </form>
             <form method="POST" action="/rooms/<%= room.id %>/tenants/remove/<%= tenant.id %>" style="display:inline">
+              <input type="hidden" name="month" value="<%= month %>">
+              <input type="hidden" name="year" value="<%= year %>">
               <button type="submit" class="btn-remove" title="Remove tenant">✕</button>
             </form>
           </div>
@@ -40,6 +57,8 @@
     <!-- Add Tenant Form -->
     <% if (room.tenants.length < 5) { %>
     <form method="POST" action="/rooms/<%= room.id %>/tenants/add" class="add-tenant-form">
+      <input type="hidden" name="month" value="<%= month %>">
+      <input type="hidden" name="year" value="<%= year %>">
       <input type="text" name="name" placeholder="New tenant name" required>
       <button type="submit" class="btn btn-primary btn-sm">Add</button>
     </form>
@@ -47,6 +66,8 @@
 
     <!-- Room Status -->
     <form method="POST" action="/rooms/update/<%= room.id %>" class="room-status-form">
+      <input type="hidden" name="month" value="<%= month %>">
+      <input type="hidden" name="year" value="<%= year %>">
       <div class="form-group">
         <label>Status</label>
         <select name="status">
@@ -61,4 +82,3 @@
 </div>
 
 <%- include('partials/footer') %>
-

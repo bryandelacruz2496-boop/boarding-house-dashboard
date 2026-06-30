@@ -28,6 +28,7 @@ async function connectDB() {
   await db.collection('tenants').createIndex({ room_id: 1, is_active: 1 });
   await db.collection('billing').createIndex({ room_id: 1, month: 1, year: 1 }, { unique: true });
   await db.collection('tenant_payments').createIndex({ tenant_id: 1, billing_id: 1 }, { unique: true });
+  await db.collection('tenant_wifi_monthly').createIndex({ tenant_id: 1, month: 1, year: 1 }, { unique: true });
   await db.collection('fixed_expense_payments').createIndex({ fixed_expense_id: 1, month: 1, year: 1 }, { unique: true });
 
   // Seed admin user

@@ -81,8 +81,14 @@ router.post('/save', async (req, res) => {
   const consumption = currReading - prevReading;
   const electric_bill = consumption > 0 ? consumption * rate : 0;
 
-  // Always compute wifi from actual tenant data to stay in sync with rooms module
-  const wifiCount = await db.collection('tenants').countDocuments({ room_id, is_active: 1, has_wifi: 1 });
+  // Always compute wifi from per-month tenant wifi data to stay in sync with rooms module
+  const tenants = await db.collection('tenants').find({ room_id, is_active: 1 }).toArray();
+  let wifiCount = 0;
+  for (const t of tenants) {
+    const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year: parseInt(year) });
+    const hasWifi = wifiRecord ? wifiRecord.has_wifi : t.has_wifi;
+    if (hasWifi) wifiCount++;
+  }
   const wifi = WIFI_PER_PERSON * wifiCount;
 
   const total = parseFloat(rent||0) + wifi + electric_bill + parseFloat(water_bill||0) + parseFloat(garbage_fee||0) + parseFloat(penalty||0);

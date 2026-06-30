@@ -38,7 +38,10 @@ router.get('/', async (req, res) => {
 
     const tenantBreakdowns = [];
     for (const tenant of tenants) {
-      const wifiCost = tenant.has_wifi ? WIFI_PER_PERSON : 0;
+      // Use per-month wifi status
+      const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: tenant._id.toString(), month, year });
+      const hasWifi = wifiRecord ? wifiRecord.has_wifi : tenant.has_wifi;
+      const wifiCost = hasWifi ? WIFI_PER_PERSON : 0;
       const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
       const payment = await db.collection('tenant_payments').findOne({ tenant_id: tenant._id.toString(), billing_id: billing._id.toString() });
 
@@ -117,7 +120,9 @@ router.get('/receipt/:roomId/:tenantId', async (req, res) => {
   const waterShare = billing.water_bill / tenantCount;
   const garbageShare = billing.garbage_fee / tenantCount;
   const penaltyShare = billing.penalty / tenantCount;
-  const wifiCost = tenant.has_wifi ? WIFI_PER_PERSON : 0;
+  const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: tenant._id.toString(), month, year });
+  const hasWifi = wifiRecord ? wifiRecord.has_wifi : tenant.has_wifi;
+  const wifiCost = hasWifi ? WIFI_PER_PERSON : 0;
   const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
 
   res.render('receipt', { room, tenant, billing, month, year, tenantCount, consumption, rentShare, electricShare, waterShare, garbageShare, penaltyShare, wifiCost, total, wifiPerPerson: WIFI_PER_PERSON });
@@ -145,13 +150,21 @@ router.get('/receipt/:roomId', async (req, res) => {
   const penaltyShare = billing.penalty / tenantCount;
 
   const tenantBreakdowns = tenants.map(t => {
-    const wifiCost = t.has_wifi ? WIFI_PER_PERSON : 0;
-    const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
-    return { ...t, rentShare, wifiCost, electricShare, waterShare, garbageShare, penaltyShare, total };
+    return t;
   });
 
-  const roomTotal = tenantBreakdowns.reduce((s, t) => s + t.total, 0);
-  res.render('receipt-room', { room, billing, month, year, tenants: tenantBreakdowns, tenantCount, consumption, roomTotal, wifiPerPerson: WIFI_PER_PERSON });
+  // Use per-month wifi for room receipt
+  const tenantBreakdownsAsync = [];
+  for (const t of tenants) {
+    const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year });
+    const hasWifi = wifiRecord ? wifiRecord.has_wifi : t.has_wifi;
+    const wifiCost = hasWifi ? WIFI_PER_PERSON : 0;
+    const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
+    tenantBreakdownsAsync.push({ ...t, rentShare, wifiCost, electricShare, waterShare, garbageShare, penaltyShare, total });
+  }
+
+  const roomTotal = tenantBreakdownsAsync.reduce((s, t) => s + t.total, 0);
+  res.render('receipt-room', { room, billing, month, year, tenants: tenantBreakdownsAsync, tenantCount, consumption, roomTotal, wifiPerPerson: WIFI_PER_PERSON });
 });
 
 module.exports = router;

@@ -15,23 +15,14 @@ router.get('/', async (req, res) => {
   const rooms = await db.collection('rooms').find().sort({ room_number: 1 }).toArray();
   const billings = await db.collection('billing').find({ month: currentMonth, year: currentYear }).toArray();
 
-  // Calculate totals based on per-tenant payments
+  // Calculate totals based on billing payment_status (consistent with billing page)
   let totalCollection = 0, totalOutstanding = 0;
 
   for (const b of billings) {
-    const tenants = await db.collection('tenants').find({ room_id: b.room_id, is_active: 1 }).toArray();
-    const tc = tenants.length;
-    if (tc === 0) continue;
-
-    const consumption = b.current_reading - b.previous_reading;
-    const electricBill = consumption > 0 ? consumption * b.rate_per_kwh : 0;
-
-    for (const t of tenants) {
-      const wifiCost = t.has_wifi ? WIFI_PER_PERSON : 0;
-      const tenantTotal = (b.rent / tc) + wifiCost + (electricBill / tc) + (b.water_bill / tc) + (b.garbage_fee / tc) + (b.penalty / tc);
-      const payment = await db.collection('tenant_payments').findOne({ tenant_id: t._id.toString(), billing_id: b._id.toString() });
-      if (payment && payment.paid) totalCollection += tenantTotal;
-      else totalOutstanding += tenantTotal;
+    if (b.payment_status === 'SETTLED') {
+      totalCollection += b.total;
+    } else {
+      totalOutstanding += b.total;
     }
   }
 
@@ -56,17 +47,13 @@ router.get('/', async (req, res) => {
     const billing = billings.find(b => b.room_id === room._id.toString());
 
     let collected = 0, balance = 0;
-    if (billing && tenantCount > 0) {
-      const tenants = await db.collection('tenants').find({ room_id: room._id.toString(), is_active: 1 }).toArray();
-      const consumption = billing.current_reading - billing.previous_reading;
-      const electricBill = consumption > 0 ? consumption * billing.rate_per_kwh : 0;
-
-      for (const t of tenants) {
-        const wifiCost = t.has_wifi ? WIFI_PER_PERSON : 0;
-        const tenantTotal = (billing.rent / tenantCount) + wifiCost + (electricBill / tenantCount) + (billing.water_bill / tenantCount) + (billing.garbage_fee / tenantCount) + (billing.penalty / tenantCount);
-        const payment = await db.collection('tenant_payments').findOne({ tenant_id: t._id.toString(), billing_id: billing._id.toString() });
-        if (payment && payment.paid) collected += tenantTotal;
-        else balance += tenantTotal;
+    if (billing) {
+      if (billing.payment_status === 'SETTLED') {
+        collected = billing.total;
+        balance = 0;
+      } else {
+        collected = 0;
+        balance = billing.total;
       }
     }
 

@@ -21,7 +21,7 @@
   "homepage": "https://github.com/bryandelacruz2496-boop/boarding-house-dashboard#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "connect-mongo": "^6.0.0",
+    "connect-mongodb-session": "^5.0.0",
     "connect-session-knex": "^5.0.0",
     "dotenv": "^17.4.2",
     "ejs": "^6.0.1",

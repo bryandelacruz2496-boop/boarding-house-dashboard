@@ -11,8 +11,10 @@
 </head>
 <body>
   <% if (user) { %>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle menu">&#9776;</button>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <div class="app-layout">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-profile">
         <div class="profile-avatar">
           <span>&#127936;</span>

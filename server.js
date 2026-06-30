@@ -23,18 +23,34 @@ app.use(session({
 
 // Auth middleware
 function requireAuth(req, res, next) {
-  if (req.session && req.session.userId) return next();
+  if (req.session && req.session.userId) {
+    // Prevent browser from caching authenticated pages
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    return next();
+  }
   res.redirect('/login');
 }
 
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.userId && req.session.role !== 'tenant') return next();
+  if (req.session && req.session.userId && req.session.role !== 'tenant') {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    return next();
+  }
   if (req.session && req.session.role === 'tenant') return res.redirect('/tenant');
   res.redirect('/login');
 }
 
 function requireTenant(req, res, next) {
-  if (req.session && req.session.userId && req.session.role === 'tenant') return next();
+  if (req.session && req.session.userId && req.session.role === 'tenant') {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    return next();
+  }
   if (req.session && req.session.userId) return res.redirect('/dashboard');
   res.redirect('/login');
 }

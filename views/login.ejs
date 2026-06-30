@@ -17,20 +17,50 @@
         <h2>BH Manager</h2>
         <p>Boarding House Management</p>
       </div>
-      <% if (error) { %>
-        <div class="alert alert-error"><%= error %></div>
+      <% if (locked) { %>
+        <div class="alert alert-error" style="text-align: center;">
+          <strong>🔒 Account Locked</strong><br>
+          Too many failed attempts. Try again in <span id="countdown"><%= lockRemaining %></span> seconds.
+        </div>
+        <form class="login-form">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" disabled placeholder="Enter username" style="opacity: 0.5;">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" disabled placeholder="Enter password" style="opacity: 0.5;">
+          </div>
+          <button type="button" class="btn btn-primary btn-full" disabled style="opacity: 0.5;">Login</button>
+        </form>
+        <script>
+          let seconds = <%= lockRemaining %>;
+          const countdown = document.getElementById('countdown');
+          const timer = setInterval(() => {
+            seconds--;
+            countdown.textContent = seconds;
+            if (seconds <= 0) {
+              clearInterval(timer);
+              window.location.reload();
+            }
+          }, 1000);
+        </script>
+      <% } else { %>
+        <% if (error) { %>
+          <div class="alert alert-error"><%= error %></div>
+        <% } %>
+        <form action="/login" method="POST" class="login-form">
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required placeholder="Enter username">
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter password">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Login</button>
+        </form>
       <% } %>
-      <form action="/login" method="POST" class="login-form">
-        <div class="form-group">
-          <label for="username">Username</label>
-          <input type="text" id="username" name="username" required placeholder="Enter username">
-        </div>
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input type="password" id="password" name="password" required placeholder="Enter password">
-        </div>
-        <button type="submit" class="btn btn-primary btn-full">Login</button>
-      </form>
     </div>
   </div>
 </body>

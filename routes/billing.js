@@ -72,15 +72,23 @@ router.get('/edit/:roomId', async (req, res) => {
 
 router.post('/save', async (req, res) => {
   const db = getDB();
-  const { room_id, month, year, rent, wifi, electric_bill, water_bill, garbage_fee, penalty, payment_status, previous_reading, current_reading, rate_per_kwh } = req.body;
-  const total = parseFloat(rent||0) + parseFloat(wifi||0) + parseFloat(electric_bill||0) + parseFloat(water_bill||0) + parseFloat(garbage_fee||0) + parseFloat(penalty||0);
+  const { room_id, month, year, rent, wifi, water_bill, garbage_fee, penalty, payment_status, previous_reading, current_reading, rate_per_kwh } = req.body;
+  
+  // Always compute electric from readings to ensure consistency with computation module
+  const prevReading = parseFloat(previous_reading||0);
+  const currReading = parseFloat(current_reading||0);
+  const rate = parseFloat(rate_per_kwh||15);
+  const consumption = currReading - prevReading;
+  const electric_bill = consumption > 0 ? consumption * rate : 0;
+
+  const total = parseFloat(rent||0) + parseFloat(wifi||0) + electric_bill + parseFloat(water_bill||0) + parseFloat(garbage_fee||0) + parseFloat(penalty||0);
 
   const data = {
     room_id, month, year: parseInt(year),
-    rent: parseFloat(rent||0), wifi: parseFloat(wifi||0), electric_bill: parseFloat(electric_bill||0),
+    rent: parseFloat(rent||0), wifi: parseFloat(wifi||0), electric_bill,
     water_bill: parseFloat(water_bill||0), garbage_fee: parseFloat(garbage_fee||0), penalty: parseFloat(penalty||0),
-    total, previous_reading: parseFloat(previous_reading||0), current_reading: parseFloat(current_reading||0),
-    rate_per_kwh: parseFloat(rate_per_kwh||15), payment_status: payment_status || 'UNSETTLED'
+    total, previous_reading: prevReading, current_reading: currReading,
+    rate_per_kwh: rate, payment_status: payment_status || 'UNSETTLED'
   };
 
   await db.collection('billing').updateOne(

@@ -77,6 +77,37 @@
       </div>
       <button type="submit" class="btn btn-secondary btn-sm">Update Status</button>
     </form>
+
+    <!-- Room Account -->
+    <div class="room-status-form">
+      <label class="form-label">Tenant Login</label>
+      <% if (room.account) { %>
+        <p class="text-small" style="margin-bottom: 8px;">Account: <strong><%= room.account.username %></strong></p>
+        <form method="POST" action="/rooms/<%= room.id %>/account/reset" style="margin-bottom: 6px;">
+          <input type="hidden" name="month" value="<%= month %>">
+          <input type="hidden" name="year" value="<%= year %>">
+          <div style="display: flex; gap: 6px;">
+            <input type="password" name="password" placeholder="New password" required style="flex:1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px;">
+            <button type="submit" class="btn btn-secondary btn-sm">Reset</button>
+          </div>
+        </form>
+        <form method="POST" action="/rooms/<%= room.id %>/account/delete">
+          <input type="hidden" name="month" value="<%= month %>">
+          <input type="hidden" name="year" value="<%= year %>">
+          <button type="submit" class="btn btn-danger btn-sm">Remove Account</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/rooms/<%= room.id %>/account/create">
+          <input type="hidden" name="month" value="<%= month %>">
+          <input type="hidden" name="year" value="<%= year %>">
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="text" name="username" placeholder="Username (e.g. room1)" required style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px;">
+            <input type="password" name="password" placeholder="Password" required style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px;">
+            <button type="submit" class="btn btn-primary btn-sm">Create Account</button>
+          </div>
+        </form>
+      <% } %>
+    </div>
   </div>
   <% }) %>
 </div>

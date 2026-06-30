@@ -20,14 +20,18 @@
           <span>&#127936;</span>
         </div>
         <div class="profile-name"><%= user.username.toUpperCase() %></div>
-        <div class="profile-role">Property Manager</div>
+        <div class="profile-role"><%= user.role === 'tenant' ? 'Tenant' : 'Property Manager' %></div>
       </div>
       <nav class="sidebar-nav">
+        <% if (user.role === 'tenant') { %>
+        <a href="/tenant" class="sidebar-link"><span class="link-icon">&#9632;</span> My Bills</a>
+        <% } else { %>
         <a href="/dashboard" class="sidebar-link"><span class="link-icon">&#9632;</span> Dashboard</a>
         <a href="/billing" class="sidebar-link"><span class="link-icon">&#9632;</span> Billing</a>
         <a href="/computation" class="sidebar-link"><span class="link-icon">&#9632;</span> Computation</a>
         <a href="/expenses" class="sidebar-link"><span class="link-icon">&#9632;</span> Expenses</a>
         <a href="/rooms" class="sidebar-link"><span class="link-icon">&#9632;</span> Rooms</a>
+        <% } %>
       </nav>
       <div class="sidebar-footer">
         <a href="/logout" class="sidebar-link sidebar-logout"><span class="link-icon">&#9632;</span> Logout</a>

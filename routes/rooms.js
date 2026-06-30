@@ -49,7 +49,9 @@ router.get('/', async (req, res) => {
       const wifiStatus = await getWifiStatus(t._id.toString(), month, year);
       tenantsWithWifi.push({ ...t, id: t._id.toString(), has_wifi: wifiStatus });
     }
-    roomsWithTenants.push({ ...room, id: room._id.toString(), tenants: tenantsWithWifi });
+    // Check if room has a tenant account
+    const account = await db.collection('users').findOne({ room_id: room._id.toString(), role: 'tenant' });
+    roomsWithTenants.push({ ...room, id: room._id.toString(), tenants: tenantsWithWifi, account: account ? { username: account.username } : null });
   }
 
   res.render('rooms', { rooms: roomsWithTenants, month, year, months: MONTHS });
@@ -117,6 +119,55 @@ router.post('/:id/tenants/:tenantId/wifi', async (req, res) => {
   await db.collection('tenants').updateOne({ _id: new ObjectId(tenantId) }, { $set: { has_wifi: newStatus } });
 
   await updateRoomBilling(roomId, month, parseInt(year));
+  res.redirect(`/rooms?month=${month}&year=${year}`);
+});
+
+// Room account management
+router.post('/:id/account/create', async (req, res) => {
+  const db = getDB();
+  const bcrypt = require('bcryptjs');
+  const roomId = req.params.id;
+  const { username, password, month, year } = req.body;
+
+  // Check if account already exists for this room
+  const existing = await db.collection('users').findOne({ room_id: roomId, role: 'tenant' });
+  if (existing) {
+    return res.redirect(`/rooms?month=${month}&year=${year}`);
+  }
+
+  const hash = bcrypt.hashSync(password, 10);
+  await db.collection('users').insertOne({
+    username,
+    password: hash,
+    role: 'tenant',
+    room_id: roomId,
+    created_at: new Date()
+  });
+
+  res.redirect(`/rooms?month=${month}&year=${year}`);
+});
+
+router.post('/:id/account/reset', async (req, res) => {
+  const db = getDB();
+  const bcrypt = require('bcryptjs');
+  const roomId = req.params.id;
+  const { password, month, year } = req.body;
+
+  const hash = bcrypt.hashSync(password, 10);
+  await db.collection('users').updateOne(
+    { room_id: roomId, role: 'tenant' },
+    { $set: { password: hash } }
+  );
+
+  res.redirect(`/rooms?month=${month}&year=${year}`);
+});
+
+router.post('/:id/account/delete', async (req, res) => {
+  const db = getDB();
+  const roomId = req.params.id;
+  const { month, year } = req.body;
+
+  await db.collection('users').deleteOne({ room_id: roomId, role: 'tenant' });
   res.redirect(`/rooms?month=${month}&year=${year}`);
 });
 

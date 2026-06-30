@@ -1,0 +1,165 @@
+<%- include('partials/header') %>
+
+<div class="page-header">
+  <h1>Room <%= room.room_number %> - Billing</h1>
+  <span class="badge"><%= month %> <%= year %></span>
+  <span class="dashboard-time" id="dashboardTime" style="margin-left: auto; font-size: 1.1rem; color: #1e293b; font-weight: 600;"></span>
+</div>
+
+<!-- Month/Year Filter -->
+<div class="card">
+  <form class="filter-form" method="GET" action="/tenant" id="tenantFilter">
+    <select name="month" onchange="document.getElementById('tenantFilter').submit()">
+      <% months.forEach(m => { %>
+        <option value="<%= m %>" <%= m === month ? 'selected' : '' %>><%= m %></option>
+      <% }) %>
+    </select>
+    <input type="number" name="year" value="<%= year %>" min="2020" max="2030" onchange="document.getElementById('tenantFilter').submit()">
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<!-- Room Info -->
+<div class="stats-grid">
+  <div class="stat-card stat-blue">
+    <div class="stat-info">
+      <h3>Room Number</h3>
+      <p class="stat-value">Room <%= room.room_number %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-info">
+      <h3>Tenants</h3>
+      <p class="stat-value"><%= tenants.length %> person<%= tenants.length !== 1 ? 's' : '' %></p>
+    </div>
+  </div>
+  <div class="stat-card stat-orange">
+    <div class="stat-info">
+      <h3>Room Total</h3>
+      <p class="stat-value">₱<%= roomTotal.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    </div>
+  </div>
+  <div class="stat-card <%= billing && billing.payment_status === 'SETTLED' ? 'stat-green' : 'stat-red' %>">
+    <div class="stat-info">
+      <h3>Status</h3>
+      <p class="stat-value"><%= billing ? billing.payment_status : 'NO BILLING' %></p>
+    </div>
+  </div>
+</div>
+
+<% if (!billing || tenantBreakdowns.length === 0) { %>
+<div class="card">
+  <p class="text-center text-muted" style="padding: 40px 0;">No billing record found for <%= month %> <%= year %></p>
+</div>
+<% } else { %>
+
+<!-- Per-Tenant Breakdown -->
+<div class="card">
+  <div class="card-header">
+    <h2>Tenant Breakdown - <%= month %> <%= year %></h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tenant</th>
+          <th>Rent</th>
+          <th>WiFi</th>
+          <th>Electric</th>
+          <th>Water</th>
+          <th>Garbage</th>
+          <th>Penalty</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tenantBreakdowns.forEach(t => { %>
+        <tr class="<%= t.paid ? 'row-paid' : 'row-unpaid' %>">
+          <td><strong><%= t.name %></strong></td>
+          <td>₱<%= t.rentShare.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= t.wifiCost.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= t.electricShare.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= t.waterShare.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= t.garbageShare.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>₱<%= t.penaltyShare.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td><strong>₱<%= t.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td>
+            <span class="status-badge <%= t.paid ? 'status-settled' : 'status-unsettled' %>">
+              <%= t.paid ? 'PAID' : 'UNPAID' %>
+            </span>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td><strong>TOTAL</strong></td>
+          <td colspan="6"></td>
+          <td><strong>₱<%= roomTotal.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Electric Computation Detail -->
+<div class="card">
+  <div class="card-header">
+    <h2>Electric Computation</h2>
+  </div>
+  <div class="computation-info">
+    <div class="comp-row">
+      <span>Previous Reading: <strong><%= billing.previous_reading %></strong></span>
+      <span>Current Reading: <strong><%= billing.current_reading %></strong></span>
+    </div>
+    <div class="comp-row">
+      <span>Consumption: <strong><%= consumption %> kWh</strong></span>
+      <span>Rate: <strong>₱<%= billing.rate_per_kwh %>/kWh</strong></span>
+    </div>
+    <div class="comp-row">
+      <span>Total Electric: <strong>₱<%= billing.electric_bill.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
+      <span>Per Person: <strong>₱<%= (billing.electric_bill / tenants.length).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
+    </div>
+  </div>
+</div>
+
+<% } %>
+
+<!-- Payment History -->
+<% if (paymentHistory.length > 0) { %>
+<div class="card">
+  <div class="card-header">
+    <h2>Payment History</h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Year</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% paymentHistory.forEach(h => { %>
+        <tr>
+          <td><%= h.month %></td>
+          <td><%= h.year %></td>
+          <td>₱<%= h.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td>
+            <span class="status-badge <%= h.status === 'SETTLED' ? 'status-settled' : 'status-unsettled' %>">
+              <%= h.status %>
+            </span>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -4,7 +4,10 @@ const bcrypt = require('bcryptjs');
 const { getDB } = require('../database');
 
 router.get('/login', (req, res) => {
-  if (req.session.userId) return res.redirect('/dashboard');
+  if (req.session.userId) {
+    if (req.session.role === 'tenant') return res.redirect('/tenant');
+    return res.redirect('/dashboard');
+  }
   res.render('login', { error: null });
 });
 
@@ -19,6 +22,10 @@ router.post('/login', async (req, res) => {
 
   req.session.userId = user._id.toString();
   req.session.username = user.username;
+  req.session.role = user.role || 'admin';
+  req.session.room_id = user.room_id || null;
+
+  if (user.role === 'tenant') return res.redirect('/tenant');
   res.redirect('/dashboard');
 });
 

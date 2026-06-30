@@ -27,25 +27,41 @@ function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 
+function requireAdmin(req, res, next) {
+  if (req.session && req.session.userId && req.session.role !== 'tenant') return next();
+  if (req.session && req.session.role === 'tenant') return res.redirect('/tenant');
+  res.redirect('/login');
+}
+
+function requireTenant(req, res, next) {
+  if (req.session && req.session.userId && req.session.role === 'tenant') return next();
+  if (req.session && req.session.userId) return res.redirect('/dashboard');
+  res.redirect('/login');
+}
+
 // Make user available in all views
 app.use((req, res, next) => {
-  res.locals.user = req.session.userId ? { id: req.session.userId, username: req.session.username } : null;
+  res.locals.user = req.session.userId ? { id: req.session.userId, username: req.session.username, role: req.session.role, room_id: req.session.room_id } : null;
   next();
 });
 
 // Routes
 app.use('/', require('./routes/auth'));
 app.use('/api', require('./routes/api'));
-app.use('/dashboard', requireAuth, require('./routes/dashboard'));
-app.use('/billing', requireAuth, require('./routes/billing'));
-app.use('/expenses', requireAuth, require('./routes/expenses'));
-app.use('/rooms', requireAuth, require('./routes/rooms'));
-app.use('/computation', requireAuth, require('./routes/computation'));
+app.use('/dashboard', requireAdmin, require('./routes/dashboard'));
+app.use('/billing', requireAdmin, require('./routes/billing'));
+app.use('/expenses', requireAdmin, require('./routes/expenses'));
+app.use('/rooms', requireAdmin, require('./routes/rooms'));
+app.use('/computation', requireAdmin, require('./routes/computation'));
+app.use('/tenant', requireTenant, require('./routes/tenant'));
 
 // Root redirect
 app.get('/', (req, res) => {
-  if (req.session.userId) res.redirect('/dashboard');
-  else res.redirect('/login');
+  if (req.session.userId) {
+    if (req.session.role === 'tenant') return res.redirect('/tenant');
+    return res.redirect('/dashboard');
+  }
+  res.redirect('/login');
 });
 
 // Health check endpoint

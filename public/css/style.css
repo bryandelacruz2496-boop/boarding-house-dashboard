@@ -66,7 +66,7 @@ body {
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
 }
 
-.profile-avatar span { font-size: 20px; color: white; font-weight: 800; }
+.profile-avatar span { font-size: 28px; color: white; font-weight: 800; }
 .profile-name { color: white; font-size: 14px; font-weight: 700; }
 .profile-role { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 2px; }
 

@@ -13,7 +13,28 @@ router.get('/', async (req, res) => {
   const year = parseInt(req.query.year) || now.getFullYear();
 
   const rooms = await db.collection('rooms').find().sort({ room_number: 1 }).toArray();
-  const billings = await db.collection('billing').find({ month, year }).toArray();
+
+  // Sync wifi for all unsettled billings before displaying
+  const allBillings = await db.collection('billing').find({ month, year }).toArray();
+  for (const billing of allBillings) {
+    if (billing.payment_status === 'SETTLED') continue;
+    const tenants = await db.collection('tenants').find({ room_id: billing.room_id, is_active: 1 }).toArray();
+    let wifiCount = 0;
+    for (const t of tenants) {
+      const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year });
+      const hasWifi = wifiRecord ? wifiRecord.has_wifi : t.has_wifi;
+      if (hasWifi) wifiCount++;
+    }
+    const correctWifi = WIFI_PER_PERSON * wifiCount;
+    if (billing.wifi !== correctWifi) {
+      const newTotal = billing.rent + correctWifi + billing.electric_bill + billing.water_bill + billing.garbage_fee + billing.penalty;
+      await db.collection('billing').updateOne({ _id: billing._id }, { $set: { wifi: correctWifi, total: newTotal } });
+      billing.wifi = correctWifi;
+      billing.total = newTotal;
+    }
+  }
+
+  const billings = allBillings;
 
   const roomBillings = [];
   for (const room of rooms) {

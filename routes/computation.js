@@ -21,7 +21,14 @@ router.get('/', async (req, res) => {
     const billing = await db.collection('billing').findOne({ room_id: roomId, month, year });
 
     const tenantCount = tenants.length;
-    const wifiTenantCount = tenants.filter(t => t.has_wifi).length;
+
+    // Count wifi subscribers from per-month data
+    let wifiTenantCount = 0;
+    for (const t of tenants) {
+      const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year });
+      const hasWifi = wifiRecord ? wifiRecord.has_wifi : t.has_wifi;
+      if (hasWifi) wifiTenantCount++;
+    }
 
     if (!billing || tenantCount === 0) {
       roomComputations.push({ room: { ...room, id: roomId }, tenants, tenantCount, wifiTenantCount, billing: null });
@@ -149,11 +156,6 @@ router.get('/receipt/:roomId', async (req, res) => {
   const garbageShare = billing.garbage_fee / tenantCount;
   const penaltyShare = billing.penalty / tenantCount;
 
-  const tenantBreakdowns = tenants.map(t => {
-    return t;
-  });
-
-  // Use per-month wifi for room receipt
   const tenantBreakdownsAsync = [];
   for (const t of tenants) {
     const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year });

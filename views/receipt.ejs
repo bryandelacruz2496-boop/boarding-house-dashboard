@@ -128,7 +128,7 @@
 
     <div class="electric-detail">
       Electric: Previous <strong><%= billing.previous_reading %></strong> → Current <strong><%= billing.current_reading %></strong> | 
-      Consumption: <strong><%= consumption %> kWh</strong> x P<%= billing.rate_per_kwh %>/kWh
+      Consumption: <strong><%= consumption %> kWh</strong> = <strong>P<%= (consumption > 0 ? consumption * billing.rate_per_kwh : 0).toFixed(2) %></strong>
     </div>
 
     <table class="receipt-table">

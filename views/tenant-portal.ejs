@@ -123,13 +123,17 @@
     </div>
     <div class="comp-row">
       <span>Consumption: <strong><%= consumption %> kWh</strong></span>
-      <span>Rate: <strong>₱<%= billing.rate_per_kwh %>/kWh</strong></span>
+      <span>Total Electric: <strong>₱<%= billing.electric_bill.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
     </div>
     <div class="comp-row">
-      <span>Total Electric: <strong>₱<%= billing.electric_bill.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
       <span>Per Person: <strong>₱<%= (billing.electric_bill / tenants.length).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></span>
     </div>
   </div>
+</div>
+
+<!-- Generate Receipt -->
+<div class="card" style="text-align: center; padding: 20px;">
+  <a href="/tenant/receipt?month=<%= month %>&year=<%= year %>" class="btn btn-primary">Generate Receipt</a>
 </div>
 
 <% } %>

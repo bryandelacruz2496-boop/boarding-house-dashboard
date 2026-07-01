@@ -77,4 +77,42 @@ router.get('/', async (req, res) => {
   });
 });
 
+router.get('/receipt', async (req, res) => {
+  const db = getDB();
+  const now = new Date();
+  const month = (req.query.month || now.toLocaleString('default', { month: 'long' })).toUpperCase();
+  const year = parseInt(req.query.year) || now.getFullYear();
+  const roomId = req.session.room_id;
+
+  if (!roomId) return res.redirect('/login');
+
+  const room = await db.collection('rooms').findOne({ _id: new ObjectId(roomId) });
+  const tenants = await db.collection('tenants').find({ room_id: roomId, is_active: 1 }).sort({ name: 1 }).toArray();
+  const billing = await db.collection('billing').findOne({ room_id: roomId, month, year });
+  const tenantCount = tenants.length;
+
+  if (!room || !billing || tenantCount === 0) return res.redirect(`/tenant?month=${month}&year=${year}`);
+
+  const consumption = billing.current_reading - billing.previous_reading;
+  const electricBill = consumption > 0 ? consumption * billing.rate_per_kwh : 0;
+  const rentShare = billing.rent / tenantCount;
+  const electricShare = electricBill / tenantCount;
+  const waterShare = billing.water_bill / tenantCount;
+  const garbageShare = billing.garbage_fee / tenantCount;
+  const penaltyShare = billing.penalty / tenantCount;
+
+  const tenantBreakdowns = [];
+  for (const t of tenants) {
+    const wifiRecord = await db.collection('tenant_wifi_monthly').findOne({ tenant_id: t._id.toString(), month, year });
+    const hasWifi = wifiRecord ? wifiRecord.has_wifi : t.has_wifi;
+    const wifiCost = hasWifi ? WIFI_PER_PERSON : 0;
+    const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
+    tenantBreakdowns.push({ name: t.name, rentShare, wifiCost, electricShare, waterShare, garbageShare, penaltyShare, total });
+  }
+
+  const roomTotal = tenantBreakdowns.reduce((s, t) => s + t.total, 0);
+
+  res.render('tenant-receipt', { room, billing, month, year, tenants: tenantBreakdowns, tenantCount, consumption, roomTotal });
+});
+
 module.exports = router;

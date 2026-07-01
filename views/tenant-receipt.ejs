@@ -38,6 +38,23 @@
       color: #555;
     }
     .receipt-meta strong { color: #000035; }
+    .electric-detail {
+      background: #f8f9fa;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: #555;
+    }
+    .electric-detail strong { color: #000035; }
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #000035;
+      margin: 20px 0 10px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
+    }
     .receipt-table {
       width: 100%;
       border-collapse: collapse;
@@ -71,23 +88,6 @@
       margin-top: 16px;
       padding-top: 12px;
       border-top: 1px dashed #ddd;
-    }
-    .electric-detail {
-      background: #f8f9fa;
-      padding: 10px 12px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      font-size: 12px;
-      color: #555;
-    }
-    .electric-detail strong { color: #000035; }
-    .section-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #000035;
-      margin: 20px 0 10px;
-      padding-top: 12px;
-      border-top: 1px solid #eee;
     }
     .actions {
       text-align: center;
@@ -136,7 +136,7 @@
 
     <div class="electric-detail">
       Electric: Previous <strong><%= billing.previous_reading %></strong> → Current <strong><%= billing.current_reading %></strong> | 
-      Consumption: <strong><%= consumption %> kWh</strong> = <strong>P<%= (consumption > 0 ? consumption * billing.rate_per_kwh : 0).toFixed(2) %></strong>
+      Consumption: <strong><%= consumption %> kWh</strong> = <strong>P<%= billing.electric_bill.toFixed(2) %></strong>
     </div>
 
     <p class="section-title">Per-Tenant Breakdown</p>
@@ -175,14 +175,15 @@
     </table>
 
     <div class="receipt-note">
-      Please settle your payment on or before the 10th of the month.<br>
+      Please settle your payment on or before the 12th of the month.<br>
+      Late payments will incur a ₱250 penalty.<br>
       Thank you!
     </div>
   </div>
 
   <div class="actions">
     <button class="btn" onclick="window.print()">Print / Save as PDF</button>
-    <a href="/computation?month=<%= month %>&year=<%= year %>" class="btn btn-secondary">Back</a>
+    <a href="/tenant?month=<%= month %>&year=<%= year %>" class="btn btn-secondary">Back</a>
   </div>
 </body>
 </html>

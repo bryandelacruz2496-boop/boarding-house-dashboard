@@ -70,7 +70,8 @@ router.get('/edit/:roomId', async (req, res) => {
   const roomId = req.params.roomId;
 
   const room = await db.collection('rooms').findOne({ _id: new ObjectId(roomId) });
-  const billing = await db.collection('billing').findOne({ room_id: roomId, month, year });
+  const billingDoc = await db.collection('billing').findOne({ room_id: roomId, month, year });
+  const billing = billingDoc ? { ...billingDoc, id: billingDoc._id.toString() } : null;
   const tenants = await db.collection('tenants').find({ room_id: roomId, is_active: 1 }).toArray();
   const wifiTenantCount = tenants.filter(t => t.has_wifi).length;
 

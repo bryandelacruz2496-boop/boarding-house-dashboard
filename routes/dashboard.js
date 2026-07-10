@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
+const { computeRoomCollection } = require('../lib/payments');
 
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 const WIFI_PER_PERSON = 200;
@@ -12,8 +13,9 @@ async function computeMonthlyFinancials(db, month, year) {
 
   let totalCollection = 0, totalOutstanding = 0;
   for (const b of billings) {
-    if (b.payment_status === 'SETTLED') totalCollection += b.total;
-    else totalOutstanding += b.total;
+    const c = await computeRoomCollection(db, b, month, year);
+    totalCollection += c.collected;
+    totalOutstanding += c.outstanding;
   }
 
   const monthNum = String(monthIndex + 1).padStart(2, '0');
@@ -40,18 +42,18 @@ router.get('/', async (req, res) => {
   const rooms = await db.collection('rooms').find().sort({ room_number: 1 }).toArray();
   const billings = await db.collection('billing').find({ month: currentMonth, year: currentYear }).toArray();
 
-  // Calculate totals based on billing payment_status (consistent with billing page)
+  // Calculate totals from actual per-tenant payments (with room-level SETTLED override)
   let totalCollection = 0, totalOutstanding = 0;
+  const collectionByRoom = {};
 
   for (const b of billings) {
-    if (b.payment_status === 'SETTLED') {
-      totalCollection += b.total;
-    } else {
-      totalOutstanding += b.total;
-    }
+    const c = await computeRoomCollection(db, b, currentMonth, currentYear);
+    totalCollection += c.collected;
+    totalOutstanding += c.outstanding;
+    collectionByRoom[b.room_id] = c;
   }
 
-  const settledCount = billings.filter(b => b.payment_status === 'SETTLED').length;
+  const settledCount = Object.values(collectionByRoom).filter(c => c.status === 'SETTLED').length;
 
   // Expenses
   const monthNum = String(monthIndex + 1).padStart(2, '0');
@@ -70,22 +72,12 @@ router.get('/', async (req, res) => {
   for (const room of rooms) {
     const tenantCount = await db.collection('tenants').countDocuments({ room_id: room._id.toString(), is_active: 1 });
     const billing = billings.find(b => b.room_id === room._id.toString());
-
-    let collected = 0, balance = 0;
-    if (billing) {
-      if (billing.payment_status === 'SETTLED') {
-        collected = billing.total;
-        balance = 0;
-      } else {
-        collected = 0;
-        balance = billing.total;
-      }
-    }
+    const c = collectionByRoom[room._id.toString()] || { collected: 0, outstanding: billing ? billing.total : 0, status: billing ? 'UNSETTLED' : 'NO BILLING' };
 
     roomsWithTenants.push({
       ...room, id: room._id.toString(), room_number: room.room_number, tenantCount,
-      total: billing ? billing.total : 0, collected, balance,
-      status: billing ? billing.payment_status : 'NO BILLING'
+      total: billing ? billing.total : 0, collected: c.collected, balance: c.outstanding,
+      status: billing ? c.status : 'NO BILLING'
     });
   }
 

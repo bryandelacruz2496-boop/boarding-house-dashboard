@@ -124,7 +124,7 @@
           <td data-label="Total" class="num">₱<%= room.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
           <td data-label="Collected" class="num">₱<%= (room.collected || 0).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
           <td data-label="Status">
-            <span class="status-badge status-<%= room.status === 'SETTLED' ? 'settled' : room.status === 'UNSETTLED' ? 'unsettled' : 'none' %>">
+            <span class="status-badge status-<%= room.status === 'SETTLED' ? 'settled' : room.status === 'PARTIAL' ? 'partial' : room.status === 'UNSETTLED' ? 'unsettled' : 'none' %>">
               <%= room.status %>
             </span>
           </td>

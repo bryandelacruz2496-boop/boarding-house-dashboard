@@ -246,6 +246,7 @@ body {
 }
 .status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .status-settled { background: var(--emerald-light); color: var(--emerald); }
+.status-partial { background: var(--amber-light); color: var(--amber); }
 .status-unsettled { background: var(--rose-light); color: var(--rose); }
 .status-none { background: #F1F5F9; color: var(--text-muted); }
 .status-occupied { background: var(--primary-light); color: var(--primary); }

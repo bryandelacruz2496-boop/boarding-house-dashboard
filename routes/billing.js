@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDB } = require('../database');
 const { ObjectId } = require('mongodb');
+const { computeRoomCollection } = require('../lib/payments');
 
 const WIFI_PER_PERSON = 200;
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
@@ -43,8 +44,13 @@ router.get('/', async (req, res) => {
   }
 
   const overallTotal = billings.reduce((s, b) => s + b.total, 0);
-  const totalSettled = billings.filter(b => b.payment_status === 'SETTLED').reduce((s, b) => s + b.total, 0);
-  const totalUnsettled = billings.filter(b => b.payment_status === 'UNSETTLED').reduce((s, b) => s + b.total, 0);
+  // Collected/outstanding from actual per-tenant payments (SETTLED flag as override)
+  let totalSettled = 0, totalUnsettled = 0;
+  for (const b of billings) {
+    const c = await computeRoomCollection(db, b, month, year);
+    totalSettled += c.collected;
+    totalUnsettled += c.outstanding;
+  }
 
   const columnTotals = {
     rent: billings.reduce((s, b) => s + b.rent, 0), wifi: billings.reduce((s, b) => s + b.wifi, 0),

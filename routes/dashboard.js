@@ -5,6 +5,31 @@ const { getDB } = require('../database');
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 const WIFI_PER_PERSON = 200;
 
+// Lightweight financial summary for a given month/year (used for trends + sparkline)
+async function computeMonthlyFinancials(db, month, year) {
+  const monthIndex = MONTHS.indexOf(month);
+  const billings = await db.collection('billing').find({ month, year }).toArray();
+
+  let totalCollection = 0, totalOutstanding = 0;
+  for (const b of billings) {
+    if (b.payment_status === 'SETTLED') totalCollection += b.total;
+    else totalOutstanding += b.total;
+  }
+
+  const monthNum = String(monthIndex + 1).padStart(2, '0');
+  const expenses = await db.collection('expenses').find({ date: { $regex: `^${year}-${monthNum}` } }).toArray();
+  const fixedExpenses = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
+  const totalExpenses = fixedExpenses.reduce((s, e) => s + e.amount, 0) + expenses.reduce((s, e) => s + e.amount, 0);
+
+  return { totalCollection, totalOutstanding, totalExpenses, netIncome: totalCollection - totalExpenses };
+}
+
+// Percentage change helper; returns null when previous is 0 (no baseline)
+function pctChange(current, previous) {
+  if (previous === 0) return null;
+  return ((current - previous) / Math.abs(previous)) * 100;
+}
+
 router.get('/', async (req, res) => {
   const db = getDB();
   const now = new Date();
@@ -78,10 +103,36 @@ router.get('/', async (req, res) => {
     penalty: billings.reduce((s, b) => s + b.penalty, 0),
   };
 
+  // Previous month (for trend indicators on KPI cards)
+  let prevMonthIndex = monthIndex - 1;
+  let prevYear = currentYear;
+  if (prevMonthIndex < 0) { prevMonthIndex = 11; prevYear = currentYear - 1; }
+  const prev = await computeMonthlyFinancials(db, MONTHS[prevMonthIndex], prevYear);
+
+  const trends = {
+    collection: pctChange(totalCollection, prev.totalCollection),
+    outstanding: pctChange(totalOutstanding, prev.totalOutstanding),
+    expenses: pctChange(totalExpenses, prev.totalExpenses),
+    netIncome: pctChange(netIncome, prev.netIncome)
+  };
+
+  // Last 6 months of net income (for sparkline), oldest -> newest
+  const sparkline = [];
+  for (let i = 5; i >= 0; i--) {
+    let mi = monthIndex - i;
+    let yr = currentYear;
+    while (mi < 0) { mi += 12; yr -= 1; }
+    const fin = (mi === monthIndex && yr === currentYear)
+      ? { netIncome }
+      : await computeMonthlyFinancials(db, MONTHS[mi], yr);
+    sparkline.push({ label: MONTHS[mi].slice(0, 3), value: fin.netIncome });
+  }
+
   res.render('dashboard', {
     currentMonth, currentYear, months: MONTHS, billings,
     totalCollection, totalOutstanding, settledCount, totalExpenses, netIncome,
-    expenses, roomSummary: roomsWithTenants, expenseCategories, billingBreakdown
+    expenses, roomSummary: roomsWithTenants, expenseCategories, billingBreakdown,
+    trends, sparkline, totalRooms: rooms.length
   });
 });
 

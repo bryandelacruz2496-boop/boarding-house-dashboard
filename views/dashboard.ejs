@@ -19,45 +19,84 @@
   </form>
 </div>
 
+<%
+  // Trend badge renderer: positive change = good for collection/net, bad for outstanding/expenses
+  function trendBadge(pct, higherIsBetter) {
+    if (pct === null || pct === undefined) return '<span class="stat-trend trend-flat">— new</span>';
+    const rounded = Math.round(pct);
+    if (rounded === 0) return '<span class="stat-trend trend-flat">0% vs last month</span>';
+    const up = rounded > 0;
+    const good = higherIsBetter ? up : !up;
+    const arrow = up ? '&#9650;' : '&#9660;';
+    const cls = good ? 'trend-up' : 'trend-down';
+    return `<span class="stat-trend ${cls}">${arrow} ${Math.abs(rounded)}%</span><span class="stat-trend-note">vs last month</span>`;
+  }
+  const settledPct = totalRooms > 0 ? Math.round((settledCount / totalRooms) * 100) : 0;
+%>
 <!-- Summary Cards -->
 <div class="stats-grid">
   <div class="stat-card stat-green">
-    <div class="stat-info">
-      <h3>Total Collection</h3>
-      <p class="stat-value">₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    <div class="stat-card-top">
+      <div class="stat-info">
+        <h3>Total Collection</h3>
+        <p class="stat-value" data-countup="<%= totalCollection %>">₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+      </div>
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
     </div>
+    <%- trendBadge(trends.collection, true) %>
   </div>
   <div class="stat-card stat-red">
-    <div class="stat-info">
-      <h3>Outstanding Balance</h3>
-      <p class="stat-value">₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    <div class="stat-card-top">
+      <div class="stat-info">
+        <h3>Outstanding Balance</h3>
+        <p class="stat-value" data-countup="<%= totalOutstanding %>">₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+      </div>
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    </div>
+    <%- trendBadge(trends.outstanding, false) %>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-card-top">
+      <div class="stat-info">
+        <h3>Total to Collect</h3>
+        <p class="stat-value" data-countup="<%= totalCollection + totalOutstanding %>">₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+      </div>
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
     </div>
   </div>
   <div class="stat-card stat-blue">
-    <div class="stat-info">
-      <h3>Total to Collect</h3>
-      <p class="stat-value">₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    <div class="stat-card-top">
+      <div class="stat-info">
+        <h3>Settled Rooms</h3>
+        <p class="stat-value"><%= settledCount %> / <%= totalRooms %></p>
+      </div>
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
     </div>
-  </div>
-  <div class="stat-card stat-blue">
-    <div class="stat-info">
-      <h3>Settled Rooms</h3>
-      <p class="stat-value"><%= settledCount %> / 10</p>
-    </div>
+    <div class="stat-progress"><div class="stat-progress-bar" style="width: <%= settledPct %>%"></div></div>
   </div>
   <div class="stat-card stat-orange">
-    <div class="stat-info">
-      <h3>Total Expenses</h3>
-      <p class="stat-value">₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+    <div class="stat-card-top">
+      <div class="stat-info">
+        <h3>Total Expenses</h3>
+        <p class="stat-value" data-countup="<%= totalExpenses %>">₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></p>
+      </div>
+      <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
     </div>
+    <%- trendBadge(trends.expenses, false) %>
   </div>
 </div>
 
 <!-- Net Income Highlight -->
 <div class="net-income-card <%= netIncome >= 0 ? 'net-positive' : 'net-negative' %>">
-  <div class="net-income-label">NET INCOME - <%= currentMonth %> <%= currentYear %></div>
-  <div class="net-income-value">₱<%= netIncome.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
-  <div class="net-income-detail">Collection ₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %> − Expenses ₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
+  <div class="net-income-main">
+    <div class="net-income-label">NET INCOME - <%= currentMonth %> <%= currentYear %></div>
+    <div class="net-income-value">₱<%= netIncome.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
+    <div class="net-income-detail">Collection ₱<%= totalCollection.toLocaleString('en-PH', {minimumFractionDigits: 2}) %> − Expenses ₱<%= totalExpenses.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></div>
+  </div>
+  <div class="net-income-spark">
+    <span class="net-income-spark-label">6-Month Trend</span>
+    <canvas id="netIncomeSparkline"></canvas>
+  </div>
 </div>
 
 <!-- Room Collection Table -->
@@ -66,39 +105,40 @@
     <h2>Room Collection - <%= currentMonth %></h2>
   </div>
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-cards">
       <thead>
         <tr>
           <th>Room</th>
           <th>Tenants</th>
-          <th>Total</th>
-          <th>Collected</th>
+          <th class="num">Total</th>
+          <th class="num">Collected</th>
           <th>Status</th>
-          <th>Balance</th>
+          <th class="num">Balance</th>
         </tr>
       </thead>
       <tbody>
         <% roomSummary.forEach(room => { %>
         <tr>
-          <td><strong>ROOM <%= room.room_number %></strong></td>
-          <td><%= room.tenantCount %> person<%= room.tenantCount !== 1 ? 's' : '' %></td>
-          <td>₱<%= room.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
-          <td>₱<%= (room.collected || 0).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
-          <td>
+          <td data-label="Room"><strong>ROOM <%= room.room_number %></strong></td>
+          <td data-label="Tenants"><%= room.tenantCount %> person<%= room.tenantCount !== 1 ? 's' : '' %></td>
+          <td data-label="Total" class="num">₱<%= room.total.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td data-label="Collected" class="num">₱<%= (room.collected || 0).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td data-label="Status">
             <span class="status-badge status-<%= room.status === 'SETTLED' ? 'settled' : room.status === 'UNSETTLED' ? 'unsettled' : 'none' %>">
               <%= room.status %>
             </span>
           </td>
-          <td>₱<%= room.balance.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td data-label="Balance" class="num">₱<%= room.balance.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
         </tr>
         <% }) %>
       </tbody>
       <tfoot>
         <tr>
           <td colspan="2"><strong>OVERALL TOTAL</strong></td>
-          <td><strong>₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td class="num"><strong>₱<%= (totalCollection + totalOutstanding).toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
           <td></td>
-          <td><strong>₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
+          <td></td>
+          <td class="num"><strong>₱<%= totalOutstanding.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></strong></td>
         </tr>
       </tfoot>
     </table>
@@ -114,7 +154,12 @@
     </div>
     <div class="chart-container">
       <% if (Object.keys(expenseCategories).length === 0) { %>
-        <p class="text-center text-muted" style="padding: 40px 0;">No expenses recorded this month</p>
+        <div class="empty-state">
+          <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></div>
+          <div class="empty-state-title">No expenses yet</div>
+          <div class="empty-state-text">No expenses recorded for <%= currentMonth %> <%= currentYear %>.</div>
+          <a href="/expenses" class="btn btn-primary btn-sm">Add Expense</a>
+        </div>
       <% } else { %>
         <canvas id="expensePieChart"></canvas>
       <% } %>
@@ -158,34 +203,78 @@
     <h2>Expenses - <%= currentMonth %></h2>
     <a href="/expenses" class="btn btn-sm">View All</a>
   </div>
+  <% if (expenses.length === 0) { %>
+  <div class="empty-state">
+    <div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+    <div class="empty-state-title">No expenses recorded</div>
+    <div class="empty-state-text">Expenses for <%= currentMonth %> <%= currentYear %> will appear here once added.</div>
+    <a href="/expenses" class="btn btn-primary btn-sm">Add Expense</a>
+  </div>
+  <% } else { %>
   <div class="table-responsive">
-    <table class="table">
+    <table class="table table-cards">
       <thead>
         <tr>
           <th>Date</th>
-          <th>Amount</th>
+          <th class="num">Amount</th>
           <th>Reason</th>
         </tr>
       </thead>
       <tbody>
-        <% if (expenses.length === 0) { %>
-        <tr><td colspan="3" class="text-center">No expenses recorded</td></tr>
-        <% } %>
         <% expenses.slice(0, 5).forEach(exp => { %>
         <tr>
-          <td><%= exp.date %></td>
-          <td>₱<%= exp.amount.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
-          <td><%= exp.reason %></td>
+          <td data-label="Date"><%= exp.date %></td>
+          <td data-label="Amount" class="num">₱<%= exp.amount.toLocaleString('en-PH', {minimumFractionDigits: 2}) %></td>
+          <td data-label="Reason"><%= exp.reason %></td>
         </tr>
         <% }) %>
       </tbody>
     </table>
   </div>
+  <% } %>
 </div>
 
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+  // Net Income Sparkline (6-month trend inside the hero banner)
+  (function() {
+    const el = document.getElementById('netIncomeSparkline');
+    if (!el) return;
+    const sparkData = <%- JSON.stringify(sparkline) %>;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: sparkData.map(d => d.label),
+        datasets: [{
+          data: sparkData.map(d => d.value),
+          borderColor: 'rgba(255,255,255,0.95)',
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => items[0].label,
+              label: (ctx) => '₱' + ctx.parsed.y.toLocaleString()
+            }
+          }
+        },
+        scales: { x: { display: false }, y: { display: false } }
+      }
+    });
+  })();
+
   // Expense Pie Chart
   <% if (Object.keys(expenseCategories).length > 0) { %>
   const expenseCtx = document.getElementById('expensePieChart').getContext('2d');

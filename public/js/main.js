@@ -8,7 +8,37 @@ document.addEventListener('DOMContentLoaded', () => {
       link.classList.add('active');
     }
   });
+
+  // Animate KPI values (count-up)
+  initCountUp();
 });
+
+// ==========================================
+// Count-up animation for stat values
+// ==========================================
+function initCountUp() {
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const els = document.querySelectorAll('[data-countup]');
+  els.forEach(el => {
+    const target = parseFloat(el.getAttribute('data-countup'));
+    if (isNaN(target)) return;
+    if (prefersReduced) return; // leave the server-rendered value as-is
+
+    const format = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const duration = 800;
+    const start = performance.now();
+
+    function tick(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = format(target * eased);
+      if (progress < 1) requestAnimationFrame(tick);
+      else el.textContent = format(target);
+    }
+    requestAnimationFrame(tick);
+  });
+}
 
 // ==========================================
 // Toast Notification System

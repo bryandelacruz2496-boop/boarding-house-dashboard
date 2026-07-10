@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#1a73e8"/>
+  <g fill="#ffffff">
+    <!-- House shape -->
+    <path d="M256 80 L416 200 L416 420 L96 420 L96 200 Z"/>
+    <!-- Door -->
+    <rect x="216" y="300" width="80" height="120" rx="4" fill="#1a73e8"/>
+    <!-- Window left -->
+    <rect x="136" y="240" width="60" height="60" rx="4" fill="#1a73e8"/>
+    <!-- Window right -->
+    <rect x="316" y="240" width="60" height="60" rx="4" fill="#1a73e8"/>
+    <!-- Roof accent -->
+    <path d="M256 80 L416 200 L96 200 Z" fill="#ffffff" opacity="0.9"/>
+  </g>
+</svg>

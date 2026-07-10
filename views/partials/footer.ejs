@@ -4,6 +4,20 @@
   </div><!-- .app-layout -->
   <% } %>
   <script src="/js/main.js"></script>
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('SW registered:', registration.scope);
+          })
+          .catch((error) => {
+            console.log('SW registration failed:', error);
+          });
+      });
+    }
+  </script>
   <script>
     // Live clock on all pages
     function updateClock() {

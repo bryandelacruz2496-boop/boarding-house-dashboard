@@ -7,6 +7,24 @@ const { computeRoomCollection } = require('../lib/payments');
 const WIFI_PER_PERSON = 200;
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 
+// Propagate a room-level settlement to each active tenant's payment record so
+// the billing and computation views stay in sync.
+//   paid = true  -> mark every active tenant as paid
+//   paid = false -> mark every active tenant as unpaid
+async function syncTenantPayments(db, billing, paid) {
+  const paidFlag = paid ? 1 : 0;
+  const paidDate = paid ? new Date().toISOString().split('T')[0] : null;
+  const tenants = await db.collection('tenants').find({ room_id: billing.room_id, is_active: 1 }).toArray();
+  for (const t of tenants) {
+    const existing = await db.collection('tenant_payments').findOne({ tenant_id: t._id.toString(), billing_id: billing._id.toString() });
+    if (existing) {
+      await db.collection('tenant_payments').updateOne({ _id: existing._id }, { $set: { paid: paidFlag, paid_date: paidDate } });
+    } else {
+      await db.collection('tenant_payments').insertOne({ tenant_id: t._id.toString(), billing_id: billing._id.toString(), amount: 0, paid: paidFlag, paid_date: paidDate });
+    }
+  }
+}
+
 router.get('/', async (req, res) => {
   const db = getDB();
   const now = new Date();
@@ -135,6 +153,14 @@ router.post('/save', async (req, res) => {
     { upsert: true }
   );
 
+  // If the room was saved as SETTLED, mark all tenant payments paid so the
+  // computation view matches. (UNSETTLED is left alone to preserve any
+  // partial per-tenant payments already recorded.)
+  if (data.payment_status === 'SETTLED') {
+    const savedBilling = await db.collection('billing').findOne({ room_id, month, year: parseInt(year) });
+    if (savedBilling) await syncTenantPayments(db, savedBilling, true);
+  }
+
   res.redirect(`/billing?month=${month}&year=${year}`);
 });
 
@@ -151,6 +177,8 @@ router.post('/toggle-status/:id', async (req, res) => {
   if (billing) {
     const newStatus = billing.payment_status === 'SETTLED' ? 'UNSETTLED' : 'SETTLED';
     await db.collection('billing').updateOne({ _id: billing._id }, { $set: { payment_status: newStatus } });
+    // Keep per-tenant payments in sync with the room-level status.
+    await syncTenantPayments(db, billing, newStatus === 'SETTLED');
   }
   res.redirect(`/billing?month=${req.body.month}&year=${req.body.year}`);
 });

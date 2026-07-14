@@ -43,6 +43,10 @@ router.get('/', async (req, res) => {
     const garbageShare = billing.garbage_fee / tenantCount;
     const penaltyShare = billing.penalty / tenantCount;
 
+    // Room-level SETTLED is a manual override: every tenant is considered paid
+    // even if their individual tenant_payments record hasn't been set.
+    const roomSettled = billing.payment_status === 'SETTLED';
+
     const tenantBreakdowns = [];
     for (const tenant of tenants) {
       // Use per-month wifi status
@@ -52,9 +56,10 @@ router.get('/', async (req, res) => {
       const total = rentShare + wifiCost + electricShare + waterShare + garbageShare + penaltyShare;
       const payment = await db.collection('tenant_payments').findOne({ tenant_id: tenant._id.toString(), billing_id: billing._id.toString() });
 
+      const paid = roomSettled ? 1 : (payment ? payment.paid : 0);
       tenantBreakdowns.push({
         ...tenant, id: tenant._id.toString(), rentShare, wifiCost, electricShare, waterShare, garbageShare, penaltyShare, total,
-        paid: payment ? payment.paid : 0, paid_date: payment ? payment.paid_date : null
+        paid, paid_date: payment ? payment.paid_date : null
       });
     }
 

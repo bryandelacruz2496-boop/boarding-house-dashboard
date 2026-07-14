@@ -79,8 +79,15 @@ router.get('/', async (req, res) => {
   const monthIndex = MONTHS.indexOf(month);
   const monthNum = String(monthIndex + 1).padStart(2, '0');
   const varExpenses = await db.collection('expenses').find({ date: { $regex: `^${year}-${monthNum}` } }).toArray();
+  // Only fixed expenses marked PAID for this month count against collection.
   const fixedExpenses = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
-  const totalExpenses = fixedExpenses.reduce((s, e) => s + e.amount, 0) + varExpenses.reduce((s, e) => s + e.amount, 0);
+  let paidFixedTotal = 0;
+  for (const fe of fixedExpenses) {
+    const payment = await db.collection('fixed_expense_payments')
+      .findOne({ fixed_expense_id: fe._id.toString(), month: monthIndex + 1, year });
+    if (payment && payment.paid) paidFixedTotal += fe.amount;
+  }
+  const totalExpenses = paidFixedTotal + varExpenses.reduce((s, e) => s + e.amount, 0);
   const netIncome = totalSettled - totalExpenses;
 
   res.render('billing', { roomBillings, month, year, months: MONTHS, overallTotal, totalSettled, totalUnsettled, columnTotals, totalExpenses, netIncome });

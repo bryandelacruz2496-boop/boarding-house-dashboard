@@ -6,6 +6,19 @@ const { computeRoomCollection } = require('../lib/payments');
 const MONTHS = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
 const WIFI_PER_PERSON = 200;
 
+// Sum only the fixed expenses that are actually marked PAID for the given
+// month/year. Unpaid fixed expenses are not deducted from collection.
+async function sumPaidFixedExpenses(db, monthNumber, year) {
+  const fixedExpenses = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
+  let total = 0;
+  for (const fe of fixedExpenses) {
+    const payment = await db.collection('fixed_expense_payments')
+      .findOne({ fixed_expense_id: fe._id.toString(), month: monthNumber, year });
+    if (payment && payment.paid) total += fe.amount;
+  }
+  return total;
+}
+
 // Lightweight financial summary for a given month/year (used for trends + sparkline)
 async function computeMonthlyFinancials(db, month, year) {
   const monthIndex = MONTHS.indexOf(month);
@@ -20,8 +33,8 @@ async function computeMonthlyFinancials(db, month, year) {
 
   const monthNum = String(monthIndex + 1).padStart(2, '0');
   const expenses = await db.collection('expenses').find({ date: { $regex: `^${year}-${monthNum}` } }).toArray();
-  const fixedExpenses = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
-  const totalExpenses = fixedExpenses.reduce((s, e) => s + e.amount, 0) + expenses.reduce((s, e) => s + e.amount, 0);
+  const paidFixed = await sumPaidFixedExpenses(db, monthIndex + 1, year);
+  const totalExpenses = paidFixed + expenses.reduce((s, e) => s + e.amount, 0);
 
   return { totalCollection, totalOutstanding, totalExpenses, netIncome: totalCollection - totalExpenses };
 }
@@ -61,8 +74,15 @@ router.get('/', async (req, res) => {
     date: { $regex: `^${currentYear}-${monthNum}` }
   }).sort({ date: -1 }).toArray();
 
-  const fixedExpenses = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
-  const totalFixed = fixedExpenses.reduce((s, e) => s + e.amount, 0);
+  // Only paid fixed expenses count against collection; unpaid ones are excluded.
+  const allFixed = await db.collection('fixed_expenses').find({ is_active: 1 }).toArray();
+  const paidFixed = [];
+  for (const fe of allFixed) {
+    const payment = await db.collection('fixed_expense_payments')
+      .findOne({ fixed_expense_id: fe._id.toString(), month: monthIndex + 1, year: currentYear });
+    if (payment && payment.paid) paidFixed.push(fe);
+  }
+  const totalFixed = paidFixed.reduce((s, e) => s + e.amount, 0);
   const totalVariable = expenses.reduce((s, e) => s + e.amount, 0);
   const totalExpenses = totalFixed + totalVariable;
   const netIncome = totalCollection - totalExpenses;
@@ -81,9 +101,9 @@ router.get('/', async (req, res) => {
     });
   }
 
-  // Expense categories
+  // Expense categories (only paid fixed expenses, so the chart matches the totals)
   const expenseCategories = {};
-  fixedExpenses.forEach(fe => { expenseCategories[fe.name] = (expenseCategories[fe.name] || 0) + fe.amount; });
+  paidFixed.forEach(fe => { expenseCategories[fe.name] = (expenseCategories[fe.name] || 0) + fe.amount; });
   expenses.forEach(exp => { expenseCategories[exp.reason] = (expenseCategories[exp.reason] || 0) + exp.amount; });
 
   const billingBreakdown = {
